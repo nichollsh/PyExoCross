@@ -19,12 +19,12 @@ molecules = ['H2O', 'CO2', 'H2', 'H2S', 'N2', 'SiO']
 # Preferred isotopologues per molecule (must match ExoMol API keys).
 # Example values (replace with desired isotopologues):
 preferred_isotopologues = {
-    'CO2': ['12C-16O2'],
-    'H2': ['1H2'],
-    'H2O': ['1H2-16O'],
-    'H2S': ['1H2-32S'],
-    'N2' : ['14N2'],
-    'SiO': ['28Si-16O'],
+    'H2O': ['(1H)2(16O)',],
+    'CO2': ['(12C)(16O)2',],
+    'H2': ['(1H)2',],
+    'H2S': ['(1H)2(32S)',],
+    'N2': ['(14N)2',],
+    'SiO': ['(28Si)(16O)',],
 }
 ########################################################
 
@@ -76,7 +76,7 @@ def get_urls(molecules, preferred_isotopologues):
                             file_meta = files_meta[j]
                             url = "https://www." + file_meta.get('url')
                             if url.endswith('states.bz2'):
-                                states_url = url
+                                states_url = url.replace('_v1','')
                                 def_url = states_url.replace('.states.bz2','.def.json')
                                 pf_url = states_url.replace('.states.bz2','.pf')
                             elif url.endswith('trans.bz2'):
