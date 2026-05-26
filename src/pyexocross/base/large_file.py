@@ -101,7 +101,7 @@ def read_trans_chunks(trans_filepath, usecols, names, chunk_sz=None):
     """
     if chunk_sz is None:
         chunk_sz = globals().get('chunk_size', DEFAULT_CHUNK_SIZE)
-    read_kwargs = dict(sep='\s+', header=None, usecols=usecols, names=names,
+    read_kwargs = dict(sep=r'\s+', header=None, usecols=usecols, names=names,
                        chunksize=chunk_sz, iterator=True, low_memory=False, encoding='utf-8')
     if trans_filepath.endswith('.bz2'):
         read_kwargs['compression'] = 'bz2'

@@ -7,9 +7,9 @@ SpeciesID                               11
 
 
 # File path #
-ReadPath                                /scratch/p321409/opacity/lbl/exomol/
-SavePath                                /scratch/p321409/opacity/xsc/exocross/
-LogFilePath                            /scratch/p321409/opacity/xsc/exocross/recent.log
+ReadPath                                /mnt/data/exomol/exomol3_data/
+SavePath                                /home/jingxin/data/pyexocross/
+LogFilePath                             /home/jingxin/data/pyexocross/log/H2O_ExoMol_xsec.log
 
 
 # Functions #
@@ -27,7 +27,7 @@ CrossSections                           1
 NCPUtrans                               4
 NCPUfiles                               16
 ChunkSize                               1000000
-RunMode                                 GPU                       # CPU(default) or GPU
+RunMode                                 CPU                       # CPU(default) or GPU
 GPUBackend                              AUTO                      # AUTO, CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (only used when RunMode=GPU)
 GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
 GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)

@@ -4,17 +4,28 @@ import json
 import urllib3
 import requests
 import subprocess
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 urllib3.disable_warnings()
 
 # File Paths and Molecules
 ################## Could be changed ! ##################
 # Directory that will hold the generated api__urls.txt file
-url_dir = '/home/jingxin/data/ExoMol/url/'
+url_dir = '/scratch/p321409/opacity/lbl/exomol/url/'
 # Full path to the urls file (derived from url_dir)
 url_path = os.path.join(url_dir, 'api__urls.txt')
-file_path = '/home/jingxin/data/ExoMol/'
-molecules = ['MgH','NO']
+file_path = '/scratch/p321409/opacity/lbl/exomol/'
+molecules = ['H2O', 'CO2', 'H2', 'H2S', 'N2', 'SiO'] 
+
+# Preferred isotopologues per molecule (must match ExoMol API keys).
+# Example values (replace with desired isotopologues):
+preferred_isotopologues = {
+    'CO2': ['12C-16O2'],
+    'H2': ['1H2'],
+    'H2O': ['1H2-16O'],
+    'H2S': ['1H2-32S'],
+    'N2' : ['14N2'],
+    'SiO': ['28Si-16O'],
+}
 ########################################################
 
 # Get API URLs
@@ -27,11 +38,18 @@ def get_api(molecules):
     return(api_url)
 
 # Get Download Links with API
-def get_urls(molecules):
-    """Get the download url from API."""
+def get_urls(molecules, preferred_isotopologues):
+    """Get the download url from API for preferred isotopologues only."""
     api_url = get_api(molecules)
     urls = []
     for i in tqdm(range(len(molecules))):
+        preferred = preferred_isotopologues.get(molecules[i])
+        if not preferred:
+            raise ValueError(
+                f"Preferred isotopologues not provided for {molecules[i]}. "
+                "Populate preferred_isotopologues with desired API keys."
+            )
+        preferred_set = set(preferred)
         response = requests.get(api_url[i])
         if(response.status_code != 200):
             print('ExoMol API Error' + str(response.status_code))
@@ -41,7 +59,11 @@ def get_urls(molecules):
             content = response.text            # Get the relevant content.
             json_dict = json.loads(content)    # Convert json into dictionary.
             iso_formulas = list(json_dict.keys())
+            found_preferred = set()
             for iso_formula in iso_formulas:
+                if iso_formula not in preferred_set:
+                    continue
+                found_preferred.add(iso_formula)
                 datasets = list(json_dict[iso_formula]['linelist'].keys())[1:]
                 for dataset in datasets:
                     files_info = json_dict[iso_formula]['linelist'][dataset]
@@ -68,6 +90,9 @@ def get_urls(molecules):
                         print(f'{molecules[i]} - {iso_formula} - {dataset}: {trans_count} trans file(s)')
                         for entry in urls[start:]:
                             print(entry)
+            missing = preferred_set - found_preferred
+            if missing:
+                print(f"Warning: isotopologues not found for {molecules[i]}: {sorted(missing)}")
                         
     return(urls) 
 
@@ -76,8 +101,8 @@ def get_urls(molecules):
 # In Linux, we use command:
 # wget  -r -nH --cut-dirs=1 -P savePath -i PathOFapi__urls.txt
 # Download line list files with urls and save them into correspoding folders.
-def download_files(molecules, url_path):
-    urls = get_urls(molecules)
+def download_files(molecules, url_path, preferred_isotopologues):
+    urls = get_urls(molecules, preferred_isotopologues)
     # Save all URLs to a text file
     os.makedirs(os.path.dirname(url_path), exist_ok=True)
     with open(url_path, "w", encoding="utf-8") as fh:
@@ -88,4 +113,4 @@ def download_files(molecules, url_path):
     subprocess.run(command, shell=True)
     print('\nAll files have been downloaded to', file_path, 'folder!')
 
-download_files(molecules, url_path)                 
+download_files(molecules, url_path, preferred_isotopologues)

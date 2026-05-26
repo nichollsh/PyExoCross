@@ -9,12 +9,12 @@ description = "A Python package for generating molecular and atomic spectra and 
 readme = "README.md"
 requires-python = ">=3.8,<3.13"
 license = {text = "GPL-3.0"}
-authors = [
-    {
-        name = "Jingxin Zhang",
-        email = "jingxin.zhang.19@ucl.ac.uk"
-    }
-]
+# authors = [
+#     {
+#         name = "Jingxin Zhang",
+#         email = "jingxin.zhang.19@ucl.ac.uk"
+#     }
+# ]
 keywords = ["spectroscopy", "molecule", "atom", "cross section", "exomol", "hitran", "non-LTE"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
