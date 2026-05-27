@@ -151,3 +151,280 @@ pyexocross_update.py
 
 # Workspace
 code-workspace
+# .pyc files
+############
+*.pyc
+
+# Model files
+#############
+current.*
+profile.*
+runtime.sf*
+star.sf*
+socrates_star.txt
+radiation_code.lock
+screenlog.0
+chili.csv
+input/chili/intercomp/*.toml
+!input/chili/intercomp/_*
+
+# Output files
+old/
+output/*
+output.link
+output
+slurm*.out
+*.pkl
+new.log
+
+# Development installations
+fwl_data
+FWL_DATA
+socrates
+Socrates
+SOCRATES
+mors
+Mors
+MORS
+janus
+Janus
+JANUS
+agni
+Agni
+AGNI
+calliope
+Calliope
+CALLIOPE
+petsc
+Petsc
+PETSc
+PETSC
+spider
+Spider
+SPIDER
+aragog
+Aragog
+ARAGOG
+atmodeller
+ATMODELLER
+Atmodeller
+zephyrus
+ZEPHYRUS
+Zephyrus
+vulcan
+VULCAN
+Vulcan
+lovepy
+Lovepy
+LOVEPY
+LovePy
+platon
+Platon
+PLATON
+Zalmoxis
+ZALMOXIS
+zalmoxis
+Love.jl/
+BOREAS
+boreas
+Boreas
+
+# misc
+######
+*_lbl.nc
+.DS_Store
+__pycache__
+!output/.gitkeep
+nogit*
+tools/*.csv
+tools/grid_proteus_SNS*
+
+*.odg#
+*.ods#
+*.odp#
+md5sums.txt
+zenodo*.log
+
+# From Read the Docs
+####################
+
+# Created by https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks
+# Edit at https://www.toptal.com/developers/gitignore?templates=python,jupyternotebooks
+
+### JupyterNotebooks ###
+# gitignore template for Jupyter Notebooks
+# website: http://jupyter.org/
+
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Remove previous ipynb_checkpoints
+#   git rm -r .ipynb_checkpoints/
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+coverage.json
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+result_images/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+
+# IPython
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env/
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Platon temp/downloaded files
+*.zip
+transit_depth.png
+eclipse_depth.png
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks
+.ruff_cache
+
+# Created automatically during PR #351
+Manifest.toml
+Project.toml
+
+# Docker build artifacts
+docker-build.log
+
+# Extracted stellar spectra cache
+zenodo_stellar_spectra_extracted/
+
+# Validation suite (extended physics validation, not part of CI)
+tests/validation/
+
+# Claude AI files
+CLAUDE.md
+.claude/
+.mcp.json
