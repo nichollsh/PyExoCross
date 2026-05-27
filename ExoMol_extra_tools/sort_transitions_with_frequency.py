@@ -29,7 +29,7 @@ def read_all_states(read_path):
     states_filenames = glob.glob(read_path + molecule + '/' + isotopologue + '/' + dataset 
                                  + '/' + isotopologue + '__' + dataset + '.states.bz2')
     for states_filename in states_filenames:
-        s_df[states_filename] = pd.read_csv(states_filename, compression='bz2', sep='\s+', header=None,
+        s_df[states_filename] = pd.read_csv(states_filename, compression='bz2', sep=r'\s+', header=None,
                                             chunksize=1_000_000, iterator=True, low_memory=False, dtype=object)
         for chunk in s_df[states_filename]:
             states_df = pd.concat([states_df, chunk])   
@@ -59,7 +59,7 @@ def read_all_trans(read_path):
     all_trans_df = pd.DataFrame()
     trans_filepaths = get_transfiles(read_path)
     for trans_filename in tqdm(trans_filepaths, position=0, leave=True, desc='Reading transitions'):
-        t_df[trans_filename] = pd.read_csv(trans_filename, compression='bz2', sep='\s+', header=None,
+        t_df[trans_filename] = pd.read_csv(trans_filename, compression='bz2', sep=r'\s+', header=None,
                                            chunksize=1_000_000, iterator=True, low_memory=False)
         for chunk in t_df[trans_filename]:
             all_trans_df = pd.concat([all_trans_df,chunk])

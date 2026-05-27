@@ -56,7 +56,7 @@ for j in range(molecule_num):
 
 molecule_str = (str(molecule_repeated.values).replace("[['"," ")
                 .replace("']\n ['"," ").replace("']]"," ").replace("+","_p"))
-molecule = pd.read_csv(StringIO(molecule_str), sep='\s+', header=None)
+molecule = pd.read_csv(StringIO(molecule_str), sep=r'\s+', header=None)
 
 
 # Read Def File
@@ -142,7 +142,7 @@ for(dirpath,dirnames,files)in os.walk(path):
     for filename in files:
         filepath = os.path.join(dirpath, filename)
         tot += 1
-        def_df =  pd.read_csv(filepath,sep='\s+', names=def_col_name, header=None)
+        def_df =  pd.read_csv(filepath,sep=r'\s+', names=def_col_name, header=None)
         c1 = def_df['c1']
         if def_df[c1.isin(['Uncertainty'])]['c0'].values == '1':
             unc_def_filename.append(filename)

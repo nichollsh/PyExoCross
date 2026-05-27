@@ -41,10 +41,10 @@ def read_all_states(read_path, data_info, check_uncertainty, states_col, states_
     states_df = pd.DataFrame()
     states_filename = read_path + '/'.join(data_info) + '/' + '__'.join(data_info[-2:]) + '.states.bz2'
     if os.path.exists(states_filename):    
-        chunks = pd.read_csv(states_filename, compression='bz2', sep='\s+', header=None,
+        chunks = pd.read_csv(states_filename, compression='bz2', sep=r'\s+', header=None,
                              chunksize=500_000, iterator=True, low_memory=False, dtype=object)
     elif os.path.exists(states_filename.replace('.bz2','')):
-        chunks = pd.read_csv(states_filename.replace('.bz2',''), sep='\s+', header=None,
+        chunks = pd.read_csv(states_filename.replace('.bz2',''), sep=r'\s+', header=None,
                              chunksize=500_000, iterator=True, low_memory=False, dtype=object)
     else:
         raise ValueError("No such states file, please check the read path and states filename format!")
@@ -125,6 +125,8 @@ def read_part_states(
     colname = ['id','E','g','J'] + col_unc + col_lifetime + col_gfac + QNslabel_list
     # Keep only the required columns and avoid SettingWithCopyWarning by working on a copy
     states_parts_df = states_parts_df.loc[:, states_parts_df.columns[:len(colname)]].copy()
+    print(colname)
+    print(states_parts_df.columns)
     states_parts_df.columns = colname
     QNcolumns = ['id','E','g','J'] + col_unc + col_lifetime + col_gfac + QNs_label
 
@@ -253,7 +255,7 @@ def get_transfiles(read_path, data_info):
     print('{:45s} : {}'.format('Number of new decompressed transitions files', decompress_num))
     return trans_filepaths  
 
-def get_part_transfiles(read_path, data_info):
+def get_part_transfiles(read_path, data_info, min_wn, max_wn):
     """
     Get transition file paths filtered by wavenumber range.
 
@@ -421,7 +423,7 @@ def read_broad(read_path):
                 pattern_broadener = read_path + data_info[0] + '/**/*' + broadener_name + '.broad'
                 if glob.glob(pattern_broadener, recursive=True) != []:
                     for fname_broadener in glob.glob(pattern_broadener, recursive=True):
-                        broad_df = pd.read_csv(fname_broadener, sep='\s+', header=None, engine='python')
+                        broad_df = pd.read_csv(fname_broadener, sep=r'\s+', header=None, engine='python')
                         broad_df = broad_df.rename(columns={0:'code', 1:'gamma_L', 2:'n_air', 3:'Jpp'})
                         broad_dfs.append(broad_df)
                 else:

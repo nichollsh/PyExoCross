@@ -14,7 +14,9 @@ url_dir = '/scratch/p321409/opacity/lbl/exomol/url/'
 # Full path to the urls file (derived from url_dir)
 url_path = os.path.join(url_dir, 'api__urls.txt')
 file_path = '/scratch/p321409/opacity/lbl/exomol/'
-molecules = ['H2O', 'CO2', 'H2', 'H2S', 'N2', 'SiO'] 
+# molecules = ['H2O', 'CO2', 'H2', 'H2S', 'N2', 'SiO']
+# molecules = ['CH4', 'NH3', 'SO2', 'HCN', 'O3', 'N2O', 'O2']
+molecules = ['CO']
 
 # Preferred isotopologues per molecule (must match ExoMol API keys).
 # Example values (replace with desired isotopologues):
@@ -25,6 +27,16 @@ preferred_isotopologues = {
     'H2S': ['(1H)2(32S)',],
     'N2': ['(14N)2',],
     'SiO': ['(28Si)(16O)',],
+    'CO': ['(12C)(16O)',],
+    'CH4': ['(12C)(1H)4',],
+    'NH3': ['(14N)(1H)3',],
+    'SO2': ['(32S)(16O)2',],
+    'HCN': ['(1H)(12C)(14N)',],
+    'O3': ['(16O)3',],
+    'N2O': ['(14N)2(16O)',],
+    'O2': ['(16O)2',],
+    'SiO2': ['(28Si)(16O)2',],
+    'MgO': ['(24Mg)(16O)',],
 }
 ########################################################
 

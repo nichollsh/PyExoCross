@@ -1,15 +1,15 @@
 # Data source #
 Database                                ExoMol
-Molecule                                H2O
-Isotopologue                            1H2-16O
-Dataset                                 POKAZATEL
-SpeciesID                               11
+Molecule                                CO
+Isotopologue                            12C-16O
+Dataset                                 Li2015
+SpeciesID                               5
 
 
 # File path #
-ReadPath                                /scratch/p321409/opacity/lbl/exomol/
-SavePath                                /scratch/p321409/opacity/xsc/exocross/
-LogFilePath                            /scratch/p321409/opacity/xsc/exocross/recent.log
+ReadPath                                /home2/p321409/scratch/opacity_lbl/exomol/
+SavePath                                /home2/p321409/shared/opacity_xsc/exocross/
+LogFilePath                             /home2/p321409/shared/opacity_xsc/exocross/recent.log
 
 
 # Functions #
@@ -34,8 +34,8 @@ GPUBatchGrid                            256                       # GPU grid-bat
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
-QNslabel                                Ka      Kc      v1      v2      v3      Gamma_rve
-QNsformat                               %2d     %2d     %2d     %2d     %2d     %2s
+QNslabel                                   v      e/f      
+QNsformat                                  %3d     %1s  
 
 
 # Calculate partition, specific heats or cooling functions #
@@ -62,7 +62,7 @@ Temperatures                            100,300,500,1000,2000,3000        # Temp
 WnWlUnit                                wn         cm-1           # Wavenumber (wn in unit of cm-1) or wavelength (wl in unit of um or nm)
 Range                                   10          1000          # Same unit as WnWlUnit
 Absorption/Emission                     Absorption                # 'Absorption' or 'Emission'
-UncFilter(Y/N)                          Y          0.01           # If Y, default value 0.01 cm-1
+UncFilter(Y/N)                          N          0.01           # If Y, default value 0.01 cm-1
 Threshold(Y/N)                          Y          1e-30          # If Y, default value 1e-30 cm/molecule
 QNsFilter(Y/N)                          N          Ka[]  Kc[]  v1[]  v2[1,;,0]  v3[]  Gamma_rve[]
 

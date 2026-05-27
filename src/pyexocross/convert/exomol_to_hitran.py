@@ -289,7 +289,7 @@ def broadener_ExoMol2HITRAN(exomolst_df):
     pattern_air = read_path + data_info[0] + '/**/*air.broad'
     if glob.glob(pattern_air, recursive=True) != []:
         for fname_air in glob.glob(pattern_air, recursive=True):
-            air_broad_df = pd.read_csv(fname_air, sep='\s+', names=broad_col_name, header=None, engine='python')
+            air_broad_df = pd.read_csv(fname_air, sep=r'\s+', names=broad_col_name, header=None, engine='python')
             gamma_air = extract_broad(air_broad_df,exomolst_df)[0].values
             n_air = extract_broad(air_broad_df,exomolst_df)[1].values
     else:
@@ -298,7 +298,7 @@ def broadener_ExoMol2HITRAN(exomolst_df):
     pattern_self = read_path + data_info[0] + '/**/*self.broad'
     if glob.glob(pattern_self, recursive=True) != []:
         for fname_self in glob.glob(pattern_self, recursive=True):
-            self_broad_df = pd.read_csv(fname_self, sep='\s+', names=broad_col_name, header=None, engine='python')
+            self_broad_df = pd.read_csv(fname_self, sep=r'\s+', names=broad_col_name, header=None, engine='python')
             gamma_self = extract_broad(self_broad_df,exomolst_df)[0].values
     else:
         gamma_self= np.full((1,rows),default_broad_df['gamma_L'][0])[0]  
