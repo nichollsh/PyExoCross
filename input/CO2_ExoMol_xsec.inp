@@ -1,9 +1,9 @@
 # Data source #
 Database                                ExoMol
-Molecule                                H2O
-Isotopologue                            1H2-16O
-Dataset                                 POKAZATEL
-SpeciesID                               11
+Molecule                                CO2
+Isotopologue                            12C-16O2
+Dataset                                 Dozen
+SpeciesID                               2
 
 
 # File path #
@@ -24,8 +24,8 @@ CrossSections                           1
 
 
 # Cores and chunks #
-NCPUtrans                               6
-NCPUfiles                               5
+NCPUtrans                               5
+NCPUfiles                               9
 ChunkSize                               1000000
 RunMode                                 GPU                       # CPU(default) or GPU
 GPUBackend                              AUTO                      # AUTO, CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (only used when RunMode=GPU)
@@ -34,8 +34,8 @@ GPUBatchGrid                            256                       # GPU grid-bat
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
-QNslabel                                Ka      Kc      v1      v2      v3      Gamma_rve
-QNsformat                               %2d     %2d     %2d     %2d     %2d     %2s
+QNslabel                                   v      e/f      
+QNsformat                                  %3d     %1s  
 
 
 # Calculate partition, specific heats or cooling functions #
@@ -76,7 +76,7 @@ Y-axisLimitStickSpectra                 1e-30                     # Default valu
 
 # Calculate cross sections #
 Pressures                               1e-1,1e1,1e2
-Npoints/BinSize                         BinSize   0.1
+Npoints/BinSize                         BinSize   0.01
 Broadeners                              Default
 Ratios                                  1.0   
 Profile                                 SciPyVoigt     

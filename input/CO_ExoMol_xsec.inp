@@ -8,8 +8,8 @@ SpeciesID                               5
 
 # File path #
 ReadPath                                /home2/p321409/scratch/opacity_lbl/exomol/
-SavePath                                /home2/p321409/shared/opacity_xsc/exocross/
-LogFilePath                             /home2/p321409/shared/opacity_xsc/exocross/recent.log
+SavePath                                /home2/p321409/scratch/opacity_xsc/exocross/
+LogFilePath                             /home2/p321409/scratch/opacity_xsc/exocross/recent.log
 
 
 # Functions #
@@ -76,7 +76,7 @@ Y-axisLimitStickSpectra                 1e-30                     # Default valu
 
 # Calculate cross sections #
 Pressures                               1e-1,1e1,1e2
-Npoints/BinSize                         BinSize   0.1
+Npoints/BinSize                         BinSize   0.01
 Broadeners                              Default
 Ratios                                  1.0   
 Profile                                 SciPyVoigt     

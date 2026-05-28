@@ -8,6 +8,7 @@ import os
 import numpy as np
 from tabulate import tabulate
 from tqdm import tqdm
+import shutil
 from concurrent.futures import ProcessPoolExecutor
 
 def get_results(config):
@@ -81,7 +82,20 @@ def get_results(config):
     data_info = config.data_info
     read_path = config.read_path
     save_path = config.save_path
-    
+
+    # Delete folder for this calculation
+    for subdir in ['files','plots']:
+        rmpath = os.path.join(save_path, 'xsecs', subdir, data_info[0])
+
+        # check safe
+        if os.path.exists(os.path.join(rmpath,".git")):
+            raise ValueError(f"Refusing to remove {rmpath} because it contains a .git directory.")
+
+        print(f"Removing {rmpath}")
+        shutil.rmtree(rmpath, ignore_errors=True)
+        
+    print("")
+
     # Function flags
     Conversion = config.conversion
     PartitionFunctions = config.partition_functions

@@ -393,6 +393,7 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
         ncputrans,
     )
     trans_filename = trans_filepath.split('/')[-1]
+    print('')
     print('Processeing transitions file:', trans_filename)
     if DopplerHWHMYN == 'U' and LorentzianHWHMYN == 'U':
         use_cols = [0,1,2,alpha_hwhm_colid, gamma_hwhm_colid]
