@@ -1,13 +1,12 @@
 # Data source #
-Database                                ExoMol
-Molecule                                NH3
-Isotopologue                            14N-1H3
-Dataset                                 CoYuTe
-SpeciesID                               111
+Database                                ExoAtom
+Atom                                    Na
+Dataset                                 Kurucz
+SpeciesID                               0
 
 
 # File path #
-ReadPath                                /home2/p321409/scratch/opacity_lbl/exomol/
+ReadPath                                /home2/p321409/scratch/opacity_lbl/exoatom/
 SavePath                                /home2/p321409/scratch/opacity_xsc/exocross/
 LogFilePath                             /home2/p321409/scratch/opacity_xsc/exocross/recent.log
 
@@ -34,8 +33,8 @@ GPUBatchGrid                            256                       # GPU grid-bat
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
-QNslabel                                +/-     Gamma_rve  nblock  n1      n2      n3      n4      l3      l4      invpar
-QNsformat                               %1s     %3d     %5d     %2d     %2d     %2d     %2d     %2d     %2d     %1d
+QNslabel                                Configuration  qn:LSCoupling
+QNsformat                               %12s  %7s
 
 
 # Calculate partition, specific heats or cooling functions #
@@ -48,7 +47,7 @@ Compress(Y/N)                           Y                         # If Y, save a
 
 
 # Calculate oscillator strengths #
-gf/f                                    gf
+gf/f                                    f
 PlotOscillatorStrength(Y/N)             N         
 PlotOscillatorStrengthMethod            log                       # Plot in linear (lin) or logarithm (log)
 PlotOscillatorStrengthWnWl              wn         cm-1           # Wavenumber (wn in unit cm-1) or wavelength (wl in unit[um or nm])
@@ -62,9 +61,9 @@ Temperatures                            100,500,1000,2000,3000        # Temperat
 WnWlUnit                                wn         cm-1           # Wavenumber (wn in unit of cm-1) or wavelength (wl in unit of um or nm)
 Range                                   10         30000          # Same unit as WnWlUnit
 Absorption/Emission                     Absorption                # 'Absorption' or 'Emission'
-UncFilter(Y/N)                          N          0.01           # If Y, default value 0.01 cm-1
+UncFilter(Y/N)                          Y          0.01
 Threshold(Y/N)                          Y          1e-30          # If Y, default value 1e-30 cm/molecule
-QNsFilter(Y/N)                          N          +/-[]  Gamma_rve[]  nblock[]  n1[]  n2[]  n3[]  n4[]  l3[]  l4[]  invpar[]
+QNsFilter(Y/N)                          N          Configuration[]  qn:LSCoupling[]
 
 
 # Calculate stick spectra #
@@ -82,7 +81,7 @@ Ratios                                  1.0
 Profile                                 SciPyVoigt     
 Wavenumber(wn)/wavelength(wl)           wn                        # 'wn' or 'wl'
 PredissocXsec(Y/N)                      N
-Cutoff(Y/N)                             Y          25             # If Y, default value 25 cm-1
+Cutoff(Y/N)                             Y          100             # If Y, default value 25 cm-1
 DopplerHWHM(Y/N)                        N          0.1            # Set Doppler HWHM as a constant 
 LorentzianHWHM(Y/N)                     N          0.5            # Set Lorentzian HWHM as a constant
 PlotCrossSection(Y/N)                   Y          
