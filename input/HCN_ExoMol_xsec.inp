@@ -1,9 +1,9 @@
 # Data source #
 Database                                ExoMol
-Molecule                                CO
-Isotopologue                            12C-16O
-Dataset                                 Li2015
-SpeciesID                               51
+Molecule                                HCN
+Isotopologue                            1H-12C-14N
+Dataset                                 Harris
+SpeciesID                               0
 
 
 # File path #
@@ -34,8 +34,8 @@ GPUBatchGrid                            256                       # GPU grid-bat
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
-QNslabel                                   v      e/f      
-QNsformat                                  %3d     %1s  
+QNslabel                                +/-  e/f  iso  v1  v2  l2  v3
+QNsformat                               %1s  %1s  %1d  %3d  %3d  %3d  %3d
 
 
 # Calculate partition, specific heats or cooling functions #
@@ -62,9 +62,9 @@ Temperatures                            100,500,1000,2000,3000        # Temperat
 WnWlUnit                                wn         cm-1           # Wavenumber (wn in unit of cm-1) or wavelength (wl in unit of um or nm)
 Range                                   10         30000          # Same unit as WnWlUnit
 Absorption/Emission                     Absorption                # 'Absorption' or 'Emission'
-UncFilter(Y/N)                          N          0.01           # If Y, default value 0.01 cm-1
+UncFilter(Y/N)                          N          0.01
 Threshold(Y/N)                          Y          1e-30          # If Y, default value 1e-30 cm/molecule
-QNsFilter(Y/N)                          N          v[]  e/f[]
+QNsFilter(Y/N)                          N          +/-[]  e/f[]  iso[]  v1[]  v2[]  l2[]  v3[]
 
 
 # Calculate stick spectra #

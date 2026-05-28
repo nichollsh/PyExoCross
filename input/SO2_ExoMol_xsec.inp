@@ -1,9 +1,9 @@
 # Data source #
 Database                                ExoMol
-Molecule                                CO
-Isotopologue                            12C-16O
-Dataset                                 Li2015
-SpeciesID                               51
+Molecule                                SO2
+Isotopologue                            32S-16O2
+Dataset                                 ExoAmes
+SpeciesID                               91
 
 
 # File path #
@@ -34,8 +34,8 @@ GPUBatchGrid                            256                       # GPU grid-bat
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
-QNslabel                                   v      e/f      
-QNsformat                                  %3d     %1s  
+QNslabel                                +/-     v1      v2      v3      Ka      Kc
+QNsformat                               %1s     %2d     %2d     %2d     %2d     %2d
 
 
 # Calculate partition, specific heats or cooling functions #
@@ -64,7 +64,7 @@ Range                                   10         30000          # Same unit as
 Absorption/Emission                     Absorption                # 'Absorption' or 'Emission'
 UncFilter(Y/N)                          N          0.01           # If Y, default value 0.01 cm-1
 Threshold(Y/N)                          Y          1e-30          # If Y, default value 1e-30 cm/molecule
-QNsFilter(Y/N)                          N          v[]  e/f[]
+QNsFilter(Y/N)                          N          +/-[]  v1[]  v2[]  v3[]  Ka[]  Kc[]
 
 
 # Calculate stick spectra #
@@ -89,3 +89,4 @@ PlotCrossSection(Y/N)                   Y
 PlotCrossSectionMethod                  log                       # Plot in linear (lin) or logarithm (log)
 PlotCrossSectionWnWl                    wn         cm-1           # Wavenumber (wn in unit cm-1) or wavelength (wl in unit[nm or um])
 Y-axisLimitXsec                         1e-30                     # Default value is 1e-30 cm2/molecule
+

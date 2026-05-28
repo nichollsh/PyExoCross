@@ -1,9 +1,9 @@
 # Data source #
 Database                                ExoMol
-Molecule                                CO
-Isotopologue                            12C-16O
-Dataset                                 Li2015
-SpeciesID                               51
+Molecule                                CH4
+Isotopologue                            12C-1H4
+Dataset                                 MM
+SpeciesID                               61
 
 
 # File path #
@@ -34,8 +34,8 @@ GPUBatchGrid                            256                       # GPU grid-bat
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
-QNslabel                                   v      e/f      
-QNsformat                                  %3d     %1s  
+QNslabel                                Gamma_rve  P      Pnum   n1      n2      L2      n3      L3      M3      n4      L4      M4
+QNsformat                               %3s     %2d     %3d     %6d     %4d     %4d     %4d     %4d     %4d     %4d     %4d     %4d
 
 
 # Calculate partition, specific heats or cooling functions #
@@ -64,7 +64,7 @@ Range                                   10         30000          # Same unit as
 Absorption/Emission                     Absorption                # 'Absorption' or 'Emission'
 UncFilter(Y/N)                          N          0.01           # If Y, default value 0.01 cm-1
 Threshold(Y/N)                          Y          1e-30          # If Y, default value 1e-30 cm/molecule
-QNsFilter(Y/N)                          N          v[]  e/f[]
+QNsFilter(Y/N)                          N          Gamma_rve[]  P[]  Pnum[]  n1[]  n2[]  L2[]  n3[]  L3[]  M3[]  n4[]  L4[]  M4[]
 
 
 # Calculate stick spectra #
