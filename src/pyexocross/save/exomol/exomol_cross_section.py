@@ -430,6 +430,7 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
                     for chunk in log_tqdm(trans_chunks, desc=desc)
                 ]
                 xsecs = np.sum([future.result() for future in log_tqdm(futures, desc='Combining '+trans_filename)], axis=0)
+    print('')
     return xsecs
 
 # Cross sections for ExoMol database

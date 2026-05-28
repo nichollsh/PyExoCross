@@ -4,6 +4,7 @@ Plotting functions for cross sections.
 This module provides functions for plotting and saving cross-section data.
 """
 import os
+import datetime
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -87,6 +88,11 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
     if 'L' not in wn_wl:
         # Save cross sections into .xsec file.
         print('\nSaving cross sections into file ...')   
+
+        # print system time
+        print('Date:', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+        # save data
         ts = Timer()    
         ts.start()
         xsec_df = pd.DataFrame()

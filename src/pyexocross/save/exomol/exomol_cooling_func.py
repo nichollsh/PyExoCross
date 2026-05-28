@@ -157,6 +157,7 @@ def process_exomol_cooling_func(states_df, Ts, trans_filepath):
                 futures = [trans_executor.submit(process_exomol_cooling_func_chunk, states_df, Ts, chunk)
                            for chunk in log_tqdm(trans_chunks, desc=desc)]
                 cooling_func = np.sum([future.result() for future in log_tqdm(futures, desc='Combining '+trans_filename)], axis=0)
+    print('')
     return cooling_func
 
 def save_exomol_cooling_func(states_df, Ntemp, Tmax):

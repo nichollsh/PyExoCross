@@ -7,9 +7,9 @@ SpeciesID                               11
 
 
 # File path #
-ReadPath                                /scratch/p321409/opacity/lbl/exomol/
-SavePath                                /scratch/p321409/opacity/xsc/exocross/
-LogFilePath                            /scratch/p321409/opacity/xsc/exocross/recent.log
+ReadPath                                /home2/p321409/scratch/opacity_lbl/exomol/
+SavePath                                /home2/p321409/shared/opacity_xsc/exocross/
+LogFilePath                             /home2/p321409/shared/opacity_xsc/exocross/recent.log
 
 
 # Functions #
@@ -24,8 +24,8 @@ CrossSections                           1
 
 
 # Cores and chunks #
-NCPUtrans                               4
-NCPUfiles                               16
+NCPUtrans                               5
+NCPUfiles                               9
 ChunkSize                               1000000
 RunMode                                 GPU                       # CPU(default) or GPU
 GPUBackend                              AUTO                      # AUTO, CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (only used when RunMode=GPU)
@@ -40,7 +40,7 @@ QNsformat                               %2d     %2d     %2d     %2d     %2d     
 
 # Calculate partition, specific heats or cooling functions #
 Ntemp                                   1                         # The number of temperature steps
-Tmax                                    5000                     # Maximal temperature in K 
+Tmax                                    3000                     # Maximal temperature in K 
 
 
 # Calculate lifetimes #
@@ -58,9 +58,9 @@ Y-axisLimitOscillatorStrength           1e-30                     # Default valu
 
 # Calculate stick spectra or cross sections #
 LTE/Non-LTE                             LTE                       # 'LTE' or 'Non-LTE'
-Temperatures                            100,300,500,1000,2000,3000        # Temperature in unit of K
+Temperatures                            100,500,1000,2000,3000        # Temperature in unit of K
 WnWlUnit                                wn         cm-1           # Wavenumber (wn in unit of cm-1) or wavelength (wl in unit of um or nm)
-Range                                   10          1000          # Same unit as WnWlUnit
+Range                                   10         30000          # Same unit as WnWlUnit
 Absorption/Emission                     Absorption                # 'Absorption' or 'Emission'
 UncFilter(Y/N)                          Y          0.01           # If Y, default value 0.01 cm-1
 Threshold(Y/N)                          Y          1e-30          # If Y, default value 1e-30 cm/molecule
@@ -75,14 +75,14 @@ Y-axisLimitStickSpectra                 1e-30                     # Default valu
 
 
 # Calculate cross sections #
-Pressures                               1e-3,1e-2,1e-1,1.0,1e1,1e2,1e3
+Pressures                               1e-1,1e1,1e2
 Npoints/BinSize                         BinSize   0.1
 Broadeners                              Default
 Ratios                                  1.0   
 Profile                                 SciPyVoigt     
 Wavenumber(wn)/wavelength(wl)           wn                        # 'wn' or 'wl'
 PredissocXsec(Y/N)                      N
-Cutoff(Y/N)                             Y          50             # If Y, default value 25 cm-1
+Cutoff(Y/N)                             Y          25             # If Y, default value 25 cm-1
 DopplerHWHM(Y/N)                        N          0.1            # Set Doppler HWHM as a constant 
 LorentzianHWHM(Y/N)                     N          0.5            # Set Lorentzian HWHM as a constant
 PlotCrossSection(Y/N)                   Y          
