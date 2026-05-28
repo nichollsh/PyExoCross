@@ -111,6 +111,19 @@ def _update_unc_filter(lines: List[str], has_uncertainty: bool) -> None:
             return
 
 
+def _update_log_file_path(lines: List[str], species: str, dataset: str) -> bool:
+    for idx, line in enumerate(lines):
+        if line.lstrip().startswith("LogFilePath"):
+            parts = line.split()
+            base_path = parts[1] if len(parts) > 1 else ""
+            log_dir = os.path.dirname(base_path) if base_path else ""
+            log_name = f"{species}_{dataset}.log"
+            new_path = os.path.join(log_dir, log_name) if log_dir else log_name
+            lines[idx] = f"{'LogFilePath':<40}{new_path}\n"
+            return True
+    return False
+
+
 def _find_def_files(data_dir: Path, species: str, database: str) -> List[Path]:
     species_lower = species.lower()
     matches: List[Path] = []
@@ -234,6 +247,8 @@ def generate_inputs(
             raise ValueError("Template must include a 'Dataset' line.")
         if not _replace_line(out_lines, "SpeciesID", str(species_id)):
             raise ValueError("Template must include a 'SpeciesID' line.")
+        if not _update_log_file_path(out_lines, species, entry["dataset"]):
+            raise ValueError("Template must include a 'LogFilePath' line.")
         if not _replace_line(out_lines, "QNslabel", "  ".join(labels)):
             raise ValueError("Template must include a 'QNslabel' line.")
         if not _replace_line(out_lines, "QNsformat", "  ".join(formats)):
