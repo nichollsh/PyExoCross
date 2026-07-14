@@ -226,7 +226,26 @@ def LorentzianHWHM_gamma(num, gamma_HWHM, nbroad, gamma_L, n_air, gamma_air, gam
         else:
             pass
     elif database in ('HITRAN', 'HITEMP') and num > 0:
-        gamma_L = gamma_air*0.7 + gamma_self*0.3
+        # HITRAN provides air- and self-broadening coefficients.  Use the
+        # active broadener mixture instead of silently forcing 70/30 for
+        # every calculation.  ``Default`` follows RADIS/HAPI convention and
+        # means air broadening for a standard HITRAN calculation.
+        from pyexocross.core import broadeners, ratios
+
+        gamma_L = np.zeros(num, dtype=np.float64)
+        for broadener, ratio in zip(broadeners, ratios):
+            name = str(broadener).strip().lower()
+            if float(ratio) == 0.0:
+                continue
+            if name in ('default', 'air'):
+                gamma_L += float(ratio) * np.asarray(gamma_air, dtype=np.float64)
+            elif name == 'self':
+                gamma_L += float(ratio) * np.asarray(gamma_self, dtype=np.float64)
+            else:
+                raise ValueError(
+                    f"HITRAN broadener '{broadener}' is unavailable. "
+                    "Use 'Default'/'Air' or 'Self'."
+                )
         gamma = Lorentzian_HWHM(gamma_L, n_air,T,P) 
     else:
         gamma = np.zeros(num)

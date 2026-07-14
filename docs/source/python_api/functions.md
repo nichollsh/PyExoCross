@@ -859,6 +859,22 @@ Line-profile widths and `cutoff` remain in cm⁻¹.
 
 Support all broadening files format from ExoMol database.
 
+For HITRAN and HITEMP, `Default` uses air broadening (`gamma_air`), consistent with the standard HAPI convention (`GammaL='gamma_air'`). 
+
+For standard HITRAN air-broadened calculations, use:
+
+```python
+broadeners=['Air'],
+ratios=[1.0],
+```
+
+To mix air and self broadening, use for example:
+
+```python
+broadeners=['Air', 'Self'],
+ratios=[0.7, 0.3],
+```
+
 **Legacy Alias**: `px.cross_section`
 
 **Example**

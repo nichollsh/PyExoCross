@@ -411,8 +411,8 @@ QNsRotLabel                            J,Ka,Kc
 # Calculate cross sections #
 Pressures                               1,10                      # Pressures in unit bar
 Npoints/BinSize                         Npoints    10001          # Same unit as WnWlUnit
-Broadeners                              Air        Self 
-Ratios                                  0.7        0.3         
+Broadeners                              Air       
+Ratios                                  1.0      
 Profile                                 Lorentzian      
 PredissocXsec(Y/N)                      N
 Cutoff(Y/N)                             Y          25             # If Y, default value 25 cm-1

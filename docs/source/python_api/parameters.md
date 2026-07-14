@@ -153,11 +153,9 @@ device='GPU'
 gpu_backend='MPS'
 ```
 
-:::{tip}
 For large line lists (e.g. H2O with billions of lines), increase `chunk_size`
 to reduce I/O overhead.  Set `ncpufiles > 1` if the species has many
 separate `.trans` files (common for ExoMol).
-:::
 
 ---
 
@@ -196,10 +194,8 @@ local_qn_label_list   = ['J', 'e/f']
 local_qn_format_list  = ['%5.1f', '%2s']         # Total: 15 chars (padded)
 ```
 
-:::{important}
 For HITRAN2004 format, both global and local quantum number fields are
 **exactly 15 characters** each.  Ensure the sum of format widths matches.
-:::
 
 ---
 
@@ -384,11 +380,25 @@ Used by `px.cross_sections()`.
 | `alpha_hwhm` | `float` or `None` | `None` | Constant Doppler HWHM (cm⁻¹); `None` to auto-calculate |
 | `gamma_hwhm` | `float` or `None` | `None` | Constant Lorentzian HWHM (cm⁻¹); `None` to auto-calculate |
 
-:::{tip}
 Set `alpha_hwhm=None` and `gamma_hwhm=None` to let PyExoCross calculate
 HWHMs from broadening parameters in the database.  Use constant values for
 quick testing or when database broadening files are unavailable.
-:::
+
+For HITRAN and HITEMP, `Default` uses air broadening (`gamma_air`), consistent with the standard HAPI convention (`GammaL='gamma_air'`). 
+
+For standard HITRAN air-broadened calculations, use:
+
+```python
+broadeners=['Air'],
+ratios=[1.0],
+```
+
+To mix air and self broadening, use for example:
+
+```python
+broadeners=['Air', 'Self'],
+ratios=[0.7, 0.3],
+```
 
 ---
 

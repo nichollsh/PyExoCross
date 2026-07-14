@@ -1115,7 +1115,7 @@ px.stick_spectra(
 )
 ```
 
-### Cross Sections (with Air + Self Broadening)
+### Cross Sections (with Air Broadening)
 
 ```python
 import pyexocross as px
@@ -1140,8 +1140,8 @@ px.cross_sections(
     max_range=30000,
     bin_size=0.1,
     profile='SciPyVoigt',
-    broadeners=['Air', 'Self'],
-    ratios=[0.7, 0.3],
+    broadeners=['Air'],
+    ratios=[1.0],
     cutoff=25.0,
     abs_emi='Ab',
     plot=True,

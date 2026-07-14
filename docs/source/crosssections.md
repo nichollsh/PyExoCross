@@ -77,6 +77,18 @@ If you want to use the default values of the broadeners, please set the `Ratios`
 
 The broadening types and ratio values are corresponding, please write them in order.
 
+***Note*** 
+
+For HITRAN and HITEMP, `Default` uses air broadening (`gamma_air`), consistent with the standard HAPI convention (`GammaL='gamma_air'`). 
+
+For standard HITRAN air-broadened calculations, use
+
+```bash
+Broadeners                              Air   
+Ratios                                  1.0  
+```
+
+
 *Example*
 
 ```bash
