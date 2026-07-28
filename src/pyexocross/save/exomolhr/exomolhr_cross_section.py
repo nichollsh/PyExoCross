@@ -140,24 +140,24 @@ def process_exomolhr_cross_section_chunk(exomolhr_df, T, P, Q, profile_label,
         return cross_section_HumlicekVoigt(wn_grid, v, alpha, gamma, coef, cutoff)
     elif profile_label == 'Thompson pseudo-Voigt':
         alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-        eta = PseudoThompsonVoigt(alpha, gamma)
-        return cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)
+        hV, eta = PseudoThompsonVoigt(alpha, gamma)
+        return cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
     elif profile_label == 'Kielkopf pseudo-Voigt':
         alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-        eta = PseudoKielkopfVoigt(alpha, gamma)
-        return cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)
+        hV, eta = PseudoKielkopfVoigt(alpha, gamma)
+        return cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
     elif profile_label == 'Olivero pseudo-Voigt':
         alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-        eta = PseudoOliveroVoigt(alpha, gamma)
-        return cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)
+        hV, eta = PseudoOliveroVoigt(alpha, gamma)
+        return cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
     elif profile_label == 'Liu-Lin pseudo-Voigt':
         alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-        eta = PseudoLiuLinVoigt(alpha, gamma)
-        return cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)
+        hV, eta = PseudoLiuLinVoigt(alpha, gamma)
+        return cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
     elif profile_label == 'Rocco pseudo-Voigt':
         alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-        eta = PseudoRoccoVoigt(alpha, gamma)
-        return cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)
+        hV, eta = PseudoRoccoVoigt(alpha, gamma)
+        return cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
     elif profile_label == 'Binned Doppler':
         alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
         return cross_section_BinnedGaussian(wn_grid, v, alpha, coef, cutoff)
@@ -260,7 +260,8 @@ def save_exomolhr_cross_section(exomolhr_df, T_list, P_list, Tvib_list, Trot_lis
                 print(f'Warning: Error processing cross sections for T={T} K, P={P} bar: {e}')
 
     print('\nTotal running time for cross sections:')
-    t.end()
+    from pyexocross.base.result import end_calculation
+    end_calculation(t)
     print('\nFinished calculating cross sections!\n')
 
     if not any_results:
@@ -269,5 +270,9 @@ def save_exomolhr_cross_section(exomolhr_df, T_list, P_list, Tvib_list, Trot_lis
         print_file_info('Cross sections', ['Wavenumber', 'Cross section'], ['%15.6f', '%15.8E'])
     else:
         print_file_info('Cross sections', ['Wavelength', 'Cross section'], ['%15.8E', '%15.8E'])
-    print(f'\nAll {xsec_file_count} cross sections files have been saved!\n')
+    from pyexocross.base.result import saving_enabled
+    if saving_enabled():
+        print(f'\nAll {xsec_file_count} cross sections files have been saved!\n')
+    else:
+        print(f'\nAll {xsec_file_count} cross section results retained in memory!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

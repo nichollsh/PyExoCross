@@ -14,11 +14,11 @@ from ..base.constants import (
     c,
     PI,
     PI4c,
-    sinPI,
     Negln2,
     SqrtPI,
     Sqrtln2,
     InvSqrt2,
+    Sqrt2,
     InvSqrtPi,
     InvSqrt2Pi,
     InvSprtln2,
@@ -473,7 +473,7 @@ def HumlicekVoigt_profile(dv, alpha, gamma):
     HumlicekVoigtProfile = ne.evaluate('real(w) / alpha * Sqrtln2InvPi')
     return HumlicekVoigtProfile
 
-def PseudoVoigt_profile(dv, alpha, gamma, eta):
+def PseudoVoigt_profile(dv, hV, eta):
     """
     Calculate Pseudo-Voigt line profile as weighted sum of Gaussian and Lorentzian.
 
@@ -483,10 +483,9 @@ def PseudoVoigt_profile(dv, alpha, gamma, eta):
     ----------
     dv : np.ndarray
         Frequency offset from line center, shape (n_points,)
-    alpha : np.ndarray
-        Doppler HWHM array, shape (n_levels,)
-    gamma : np.ndarray
-        Lorentzian HWHM array, shape (n_levels,)
+    hV : np.ndarray
+        Effective Voigt HWHM shared by the Gaussian and Lorentzian
+        components, shape (n_levels,)
     eta : np.ndarray
         Mixing parameter array (0 = pure Gaussian, 1 = pure Lorentzian), shape (n_levels,)
 
@@ -495,8 +494,8 @@ def PseudoVoigt_profile(dv, alpha, gamma, eta):
     np.ndarray
         Pseudo-Voigt line profile array, shape (n_levels, n_points)
     """
-    GaussianProfile = Doppler_profile(dv, alpha)
-    LorentzianProfile = Lorentzian_profile(dv, gamma)
+    GaussianProfile = Doppler_profile(dv, hV)
+    LorentzianProfile = Lorentzian_profile(dv, hV)
     PseudoVoigtProfile = ne.evaluate('eta * LorentzianProfile + (1 - eta) * GaussianProfile')
     return PseudoVoigtProfile
 
@@ -512,15 +511,14 @@ def PseudoThompsonVoigt(alpha, gamma):
         Doppler HWHM array, shape (n_levels,)
     gamma : np.ndarray
         Lorentzian HWHM array, shape (n_levels,)
-
     Returns
     -------
-    np.ndarray
-        eta array is a function of Voigt profile half width at half maximum (HWHM) parameters, shape (n_levels,)
+    tuple of np.ndarray
+        Effective Voigt HWHM and mixing parameter eta.
     """ 
     hV = ne.evaluate('(alpha**5+2.69269*alpha**4*gamma+2.42843*alpha**3*gamma**2+4.47163*alpha**2*gamma**3+0.07842*alpha*gamma**4+gamma**5)**0.2')
     eta = ne.evaluate('1.36603*(gamma/hV) - 0.47719*(gamma/hV)**2 + 0.11116*(gamma/hV)**3')
-    return (eta)
+    return hV, eta
 
 def PseudoKielkopfVoigt(alpha, gamma):
     """
@@ -534,15 +532,14 @@ def PseudoKielkopfVoigt(alpha, gamma):
         Doppler HWHM array, shape (n_levels,)
     gamma : np.ndarray
         Lorentzian HWHM array, shape (n_levels,)
-
     Returns
     -------
-    np.ndarray
-        eta array is a function of Voigt profile half width at half maximum (HWHM) parameters, shape (n_levels,)
+    tuple of np.ndarray
+        Effective Voigt HWHM and mixing parameter eta.
     """
     hV = ne.evaluate('0.5346 * gamma + sqrt(0.2166 * gamma**2 + alpha**2)')
     eta = ne.evaluate('1.36603*(gamma/hV) - 0.47719*(gamma/hV)**2 + 0.11116*(gamma/hV)**3')
-    return (eta)
+    return hV, eta
 
 def PseudoOliveroVoigt(alpha, gamma):
     """
@@ -556,16 +553,15 @@ def PseudoOliveroVoigt(alpha, gamma):
         Doppler HWHM array, shape (n_levels,)
     gamma : np.ndarray
         Lorentzian HWHM array, shape (n_levels,)
-
     Returns
     -------
-    np.ndarray
-        eta array is a function of Voigt profile half width at half maximum (HWHM) parameters, shape (n_levels,)
+    tuple of np.ndarray
+        Effective Voigt HWHM and mixing parameter eta.
     """
     d = ne.evaluate('(gamma-alpha)/(gamma+alpha)')
     hV = ne.evaluate('(1-0.18121*(1-d**2)-(0.023665*exp(0.6*d)+0.00418*exp(-1.9*d))*sin(PI*d))*(alpha+gamma)')
     eta = ne.evaluate('1.36603*(gamma/hV) - 0.47719*(gamma/hV)**2 + 0.11116*(gamma/hV)**3')
-    return (eta)
+    return hV, eta
 
 def PseudoLiuLinVoigt(alpha, gamma):
     """
@@ -579,16 +575,15 @@ def PseudoLiuLinVoigt(alpha, gamma):
         Doppler HWHM array, shape (n_levels,)
     gamma : np.ndarray
         Lorentzian HWHM array, shape (n_levels,)
-
     Returns
     -------
-    np.ndarray
-        eta array is a function of Voigt profile half width at half maximum (HWHM) parameters, shape (n_levels,)
+    tuple of np.ndarray
+        Effective Voigt HWHM and mixing parameter eta.
     """
     d = ne.evaluate('(gamma-alpha)/(gamma+alpha)')
-    hV = ne.evaluate('(1-0.18121*(1-d**2)-(0.023665*exp(0.6*d)+0.00418*exp(-1.9*d))*sinPI*d)*(alpha+gamma)')
+    hV = ne.evaluate('(1-0.18121*(1-d**2)-(0.023665*exp(0.6*d)+0.00418*exp(-1.9*d))*sin(PI*d))*(alpha+gamma)')
     eta = ne.evaluate('0.68188+0.61293*d-0.18384*d**2-0.11568*d**3')
-    return (eta) 
+    return hV, eta
 
 def PseudoRoccoVoigt(alpha, gamma):
     """
@@ -602,19 +597,21 @@ def PseudoRoccoVoigt(alpha, gamma):
         Doppler HWHM array, shape (n_levels,)
     gamma : np.ndarray
         Lorentzian HWHM array, shape (n_levels,)
-
     Returns
     -------
-    np.ndarray
-        eta array is a function of Voigt profile half width at half maximum (HWHM) parameters, shape (n_levels,)
+    tuple of np.ndarray
+        Effective Voigt HWHM and mixing parameter eta.
     """
     y = gamma*Sqrtln2/alpha
     y_safe = np.minimum(y, 10.0)
     erfcx_y = erfcx(y_safe)
     bhalfy = ne.evaluate('y_safe+Sqrtln2*exp(-0.6055*y_safe+0.0718*y_safe**2-0.0049*y_safe**3+0.000136*y_safe**4)')
+    hV = ne.evaluate('alpha / Sqrtln2 * bhalfy')
     Vy = ne.evaluate('bhalfy*erfcx_y')
     eta = ne.evaluate('(Vy-Sqrtln2)/(Vy*OneminSqrtPIln2)')
-    return np.where(y > 10.0, 1.0, eta)
+    hV = np.where(y > 10.0, gamma, hV)
+    eta = np.where(y > 10.0, 1.0, eta)
+    return hV, eta
 
 def BinnedGaussian_profile(dv, alpha):
     """
@@ -682,7 +679,7 @@ def BinnedVoigt_bnormq(wngrid_start, wngrid_end, v, sigma, gamma, x):
     np.ndarray
         Normalization factor array, shape (n_levels, n_points)
     """
-    vxsigma = ne.evaluate('v+x*sigma')
+    vxsigma = ne.evaluate('v+x*sigma*Sqrt2')
     bnormq = ne.evaluate('1/(arctan((wngrid_end-vxsigma)/gamma)-arctan((wngrid_start-vxsigma)/gamma))')
     return bnormq
 
@@ -706,7 +703,7 @@ def BinnedVoigt_lorenz(dv, sigma, gamma, x):
     np.ndarray
         Lorentzian component array, shape (n_levels, n_points, n_quad_points)
     """
-    dvxsigma = ne.evaluate('dv-x*sigma')
+    dvxsigma = ne.evaluate('dv-x*sigma*Sqrt2')
     lorenz = ne.evaluate('arctan((dvxsigma+binSizeHalf)/gamma)-arctan((dvxsigma-binSizeHalf)/gamma)')
     return lorenz
 

@@ -121,6 +121,7 @@ def save_hitran_stick_spectra(hitran_linelist_df, QNs_col, T_list, Tvib_list, Tr
         max_wnl,
         database,
         PlotStickSpectraYN,
+        output,
         ncputrans,
         threshold,
         wn_wl,
@@ -197,7 +198,7 @@ def save_hitran_stick_spectra(hitran_linelist_df, QNs_col, T_list, Tvib_list, Tr
         any_results = True
         
         # Plot stick spectra for this temperature
-        if PlotStickSpectraYN == 'Y':
+        if PlotStickSpectraYN == 'Y' and output != 'memory':
             plot_stick_spectra(stick_spectra_df, T=T, Tvib=Tvib, Trot=Trot)
         
         if wn_wl == 'WN':
@@ -214,17 +215,30 @@ def save_hitran_stick_spectra(hitran_linelist_df, QNs_col, T_list, Tvib_list, Tr
         else:
             raise ValueError('Please wirte the unit of wavelength in the input file: um or nm.')      
         stick_spectra_df.sort_values(by=['v'], ascending=True, inplace=True) 
+        from pyexocross.base.result import Condition, record, saving_enabled
+        axis = 'wavenumber' if wn_wl == 'WN' else 'wavelength'
+        record(
+            'stick_spectra',
+            stick_spectra_df,
+            {axis: stick_spectra_df['v'].to_numpy()},
+            {axis: 'cm-1' if wn_wl == 'WN' else wn_wl_unit,
+             'data': 'cm/molecule'},
+            Condition(T, None, Tvib, Trot),
+        )
         
         # Save file for this temperature (shared naming)
-        ss_path = stick_spectra_filepath(ss_folder, T, Tvib, Trot, str_min_wnl, str_max_wnl, unit_fn,
-                                         data_info, wn_wl, UncFilter, threshold, database, abs_emi, LTE_NLTE, photo,
-                                         NLTEMethod)
-        print('\nSaving stick spectra results...')
-        ts = Timer()    
-        ts.start()
-        save_large_txt(ss_path, stick_spectra_df, fmt=ss_fmt)
-        ts.end()
-        ss_file_count += 1
+        ss_path = None
+        if saving_enabled():
+            ss_path = stick_spectra_filepath(
+                ss_folder, T, Tvib, Trot, str_min_wnl, str_max_wnl, unit_fn,
+                data_info, wn_wl, UncFilter, threshold, database, abs_emi,
+                LTE_NLTE, photo, NLTEMethod,
+            )
+            print('\nSaving stick spectra results...')
+            ts = Timer().start()
+            save_large_txt(ss_path, stick_spectra_df, fmt=ss_fmt)
+            ts.end('save')
+            ss_file_count += 1
         print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, None, abs_emi, NLTEMethod, 'Stick spectra', ss_path)
         ss_col = list(stick_spectra_df.columns)
         
@@ -232,7 +246,8 @@ def save_hitran_stick_spectra(hitran_linelist_df, QNs_col, T_list, Tvib_list, Tr
         del stick_spectra_df
         
     print('\nTotal running time for stick spectra:')
-    tot.end()
+    from pyexocross.base.result import end_calculation
+    end_calculation(tot)
     print('\nFinished calculating stick spectra!\n')
     
     if not any_results:
@@ -244,5 +259,8 @@ def save_hitran_stick_spectra(hitran_linelist_df, QNs_col, T_list, Tvib_list, Tr
         ss_col_list = ['Wavelength'] + ss_col[1:]
         ss_fmt_list = ['%15.8E'] + ss_fmt.split()[1:]
     print_file_info('Stick spectra', ss_col_list, ss_fmt_list)
-    print(f'\nAll {ss_file_count} stick spectra files have been saved!\n')
+    if saving_enabled():
+        print(f'\nAll {ss_file_count} stick spectra files have been saved!\n')
+    else:
+        print(f'\nAll {n_temps} stick spectra results retained in memory!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

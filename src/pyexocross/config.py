@@ -41,6 +41,7 @@ class Config:
         """
         if inp_filepath is not None:
             self._load_from_file(inp_filepath, force_reload=force_reload)
+            self.output = 'files'
         
         # Always call _load_from_kwargs to handle overrides and defaults.
         # If inp_filepath was provided, kwargs will override file values.
@@ -81,6 +82,9 @@ class Config:
         self.read_path = kwargs.get('read_path', getattr(self, 'read_path', './'))
         self.save_path = kwargs.get('save_path', getattr(self, 'save_path', './output/'))
         self.logs_path = kwargs.get('logs_path', getattr(self, 'logs_path', './pyexocross.log'))
+        self.output = str(kwargs.get('output', getattr(self, 'output', 'files'))).lower()
+        if self.output not in ('files', 'memory', 'both'):
+            raise ValueError("output must be 'files', 'memory', or 'both'.")
         self.cache = str(kwargs.get('cache', getattr(self, 'cache', 'auto'))).strip().lower()
         if self.cache not in ('auto', 'parquet', 'none'):
             raise ValueError("cache must be 'auto', 'parquet', or 'none'.")

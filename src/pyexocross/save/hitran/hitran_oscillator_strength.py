@@ -31,24 +31,36 @@ def save_hitran_oscillator_strength(hitran_df):
     oscillator_strength_df.loc[:, 'os'] = cal_oscillator_strength(gp, gpp, A, v)
     oscillator_strength_df = oscillator_strength_df[['gp', 'gpp', 'os', 'v']]
     oscillator_strength_df = oscillator_strength_df.sort_values(by=['v'])
-    t.end()
+    from pyexocross.base.result import record, saving_enabled
+    record(
+        'oscillator_strength',
+        oscillator_strength_df,
+        {'wavenumber': oscillator_strength_df['v'].to_numpy()},
+        {'wavenumber': 'cm-1'},
+    )
+    t.end('calculate')
     print('Finished calculating oscillator strengths!\n')
 
-    print('Saving oscillator strengths into file ...')      
+    print('Preparing oscillator strength output ...')
     ts = Timer()    
     ts.start()
-    os_folder = save_path + 'oscillator_strength/files/'+data_info[0]+'/'+database+'/'
-    ensure_dir(os_folder)
-    os_path = os_folder+'__'.join(data_info[-2:])+'_'+gfORf.lower()+'.os' 
+    os_path = None
     os_format = "%7.1f %7.1f %10.4E %15.6f"
-    np.savetxt(os_path, oscillator_strength_df, fmt=os_format)
-    ts.end()
+    if saving_enabled():
+        os_folder = save_path + 'oscillator_strength/files/'+data_info[0]+'/'+database+'/'
+        ensure_dir(os_folder)
+        os_path = os_folder+'__'.join(data_info[-2:])+'_'+gfORf.lower()+'.os'
+        np.savetxt(os_path, oscillator_strength_df, fmt=os_format)
+    ts.end('save' if os_path else None)
     print_file_info('Oscillator strengths', oscillator_strength_df.columns, ['%7.1f', '%7.1f', '%10.4E', '%15.6f'])
     print('Wavenumber in unit of cm⁻¹')
-    print('Oscillator strengths file has been saved:', os_path, '\n')  
+    if os_path is not None:
+        print('Oscillator strengths file has been saved:', os_path, '\n')
+    else:
+        print('Oscillator strengths retained in memory.\n')
     
     # Plot oscillator strengths and save it as .png.
-    if PlotOscillatorStrengthYN == 'Y':
+    if PlotOscillatorStrengthYN == 'Y' and saving_enabled():
         plot_oscillator_strength(oscillator_strength_df)  
-    print('\nOscillator strengths have been saved!\n') 
+    print('\nOscillator strength calculation finished!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

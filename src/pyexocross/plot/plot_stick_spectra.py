@@ -193,5 +193,5 @@ def plot_stick_spectra(stick_spectra_df, T=None, Tvib=None, Trot=None):
                + '__' + database + '__' + abs_emi + photo + LTE_NLTE + '.png')
     plt.savefig(ss_plot, dpi=500)
     plt.close()  # Close figure to free memory and ensure it's saved
-    tp.end()
+    tp.end('save')
     print('Stick spectra plot has been saved:', ss_plot, '\n')

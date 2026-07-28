@@ -77,6 +77,6 @@ def plot_oscillator_strength(oscillator_strength_df):
                +'__'+PlotOscillatorStrengthWnWl.lower()+'__'+PlotOscillatorStrengthUnit.lower()+'__os.png')
     plt.savefig(os_plot, dpi=500)
     plt.show()
-    tp.end()
+    tp.end('save')
     print('Oscillator strengths plot has been saved:', os_plot)  
     

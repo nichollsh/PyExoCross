@@ -12,6 +12,13 @@ from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 
 
+# Set for one get_results() invocation. Save helpers import these names lazily.
+active_result = None
+output = 'files'
+timing_summary = {}
+timing_active = False
+
+
 def printdeviceinfo(config):
     """Print the selected CPU/GPU runtime table."""
     from pyexocross.gpu.base_gpu import configure_runtime
@@ -159,8 +166,16 @@ def get_results(config, data=None):
     ncpufiles = config.ncpufiles
     ncputrans = config.ncputrans
     
-    t_tot = Timer()
-    t_tot.start()
+    from pyexocross.base.result import Parameters, Result, relevant_parameters
+    global active_result, output, timing_summary, timing_active
+    output = config.output
+    timing_summary = {}
+    timing_active = True
+    active_result = Result(
+        kind='PyExoCross',
+        params=Parameters(relevant_parameters(config)),
+    ) if output in ('memory', 'both') else None
+    t_tot = Timer().start()
     
     if database == 'ExoMol' or database == 'ExoAtom':
         # Functions
@@ -265,6 +280,7 @@ def get_results(config, data=None):
         
         # Only calculating stick spectra and cross sections need part of states
         if NeedPartStates > 0:
+            prepare_timer = Timer().start()
             if data is None:
                 states_part_df = read_part_states(
                     states_df,
@@ -300,6 +316,7 @@ def get_results(config, data=None):
                 config.read_path,
                 config.data_info,
             )
+            prepare_timer.end('prepare')
             if states_df is not None:
                 states_df.index.name = 'index'
             # Calculate predissociation spectra and cross sections if lifetimes are not exist in the states file
@@ -563,7 +580,9 @@ def get_results(config, data=None):
                 ).reset_index(drop=True)
             else:
                 hitran_df = data.lines(min_wn, max_wn, UncFilter, threshold)
+            prepare_timer = Timer().start()
             (hitran_linelist_df, QNs_col) = hitran_linelist_QN(hitran_df)
+            prepare_timer.end('prepare')
         if StickSpectra == 1 and CrossSections == 1:
             # Use combined function for both stick spectra and cross sections
             save_hitran_stick_spectra_cross_section(hitran_linelist_df, QNs_col, T_list, P_list, Tvib_list, Trot_list)
@@ -574,6 +593,15 @@ def get_results(config, data=None):
     else:
         raise ValueError("Please add the name of the database 'ExoMol', 'ExoMolHR', 'ExoAtom', 'HITRAN', or 'HITEMP' into the input file.")
     
+    print('Time statistics:')
+    for phase in ('load', 'prepare', 'calculate', 'save'):
+        timing_summary.setdefault(phase, {'cpu': 0.0, 'system': 0.0})
+        values = timing_summary[phase]
+        print(f'{phase.capitalize()} time:')
+        print('{:25s} : {} s'.format('Running time on CPU', values['cpu']))
+        print('{:25s} : {} s'.format('Running time on system', values['system']))
     print('The program total running time:')
-    t_tot.end()
+    t_tot.end('total')
+    timing_active = False
     print('\nFinished!')
+    return active_result

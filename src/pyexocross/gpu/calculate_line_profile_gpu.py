@@ -7,6 +7,7 @@ from typing import Any, Optional
 import numpy as np
 from scipy.special import roots_hermite
 
+from pyexocross.base.constants import Sqrt2
 from pyexocross.gpu.base_gpu import (
     free_gpu_memory,
     get_cupy,
@@ -245,6 +246,7 @@ def gpu_cross_section(
     alpha=None,
     gamma=None,
     sigma=None,
+    hV=None,
     eta=None,
     bin_size2=2.0,
     inv_bin_size_pi_half=1.0,
@@ -289,6 +291,7 @@ def gpu_cross_section(
         alpha_np = np.asarray(alpha, dtype=np.float64) if alpha is not None else None
         gamma_np = np.asarray(gamma, dtype=np.float64) if gamma is not None else None
         sigma_np = np.asarray(sigma, dtype=np.float64) if sigma is not None else None
+        hV_np = np.asarray(hV, dtype=np.float64) if hV is not None else None
         eta_np = np.asarray(eta, dtype=np.float64) if eta is not None else None
 
         # Keep line filtering consistent with CPU behavior: only drop clearly
@@ -309,6 +312,9 @@ def gpu_cross_section(
         if sigma_np is not None:
             sigma_np = np.nan_to_num(sigma_np[valid], nan=_EPS, posinf=_EPS, neginf=_EPS)
             sigma_np = np.where(sigma_np > _EPS, sigma_np, _EPS)
+        if hV_np is not None:
+            hV_np = np.nan_to_num(hV_np[valid], nan=_EPS, posinf=_EPS, neginf=_EPS)
+            hV_np = np.where(hV_np > _EPS, hV_np, _EPS)
         if eta_np is not None:
             eta_np = np.nan_to_num(eta_np[valid], nan=0.5, posinf=0.5, neginf=0.5)
 
@@ -366,6 +372,7 @@ def gpu_cross_section(
                 alpha_g = _to_backend_array(provider, mod, alpha_np[l0:l1]) if alpha_np is not None else None
                 gamma_g = _to_backend_array(provider, mod, gamma_np[l0:l1]) if gamma_np is not None else None
                 sigma_g = _to_backend_array(provider, mod, sigma_np[l0:l1]) if sigma_np is not None else None
+                hV_g = _to_backend_array(provider, mod, hV_np[l0:l1]) if hV_np is not None else None
                 eta_g = _to_backend_array(provider, mod, eta_np[l0:l1]) if eta_np is not None else None
 
                 if kind == 'doppler':
@@ -385,10 +392,9 @@ def gpu_cross_section(
                     else:
                         profile = _torch_humlicek_profile(mod, dv, alpha_g, gamma_g)
                 elif kind == 'pseudo_voigt':
-                    alpha_safe = _safe_positive(provider, mod, alpha_g)
-                    gamma_safe = _safe_positive(provider, mod, gamma_g)
-                    gaussian = sqrtln2_inv_pi / alpha_safe[None, :] * mod.exp(negln2 * (dv / alpha_safe[None, :]) ** 2)
-                    lorentzian = gamma_safe[None, :] / pi_val / (dv**2 + gamma_safe[None, :] ** 2)
+                    hV_safe = _safe_positive(provider, mod, hV_g)
+                    gaussian = sqrtln2_inv_pi / hV_safe[None, :] * mod.exp(negln2 * (dv / hV_safe[None, :]) ** 2)
+                    lorentzian = hV_safe[None, :] / pi_val / (dv**2 + hV_safe[None, :] ** 2)
                     profile = eta_g[None, :] * lorentzian + (1.0 - eta_g[None, :]) * gaussian
                 elif kind == 'binned_gaussian':
                     alpha_safe = _safe_positive(provider, mod, alpha_g)
@@ -421,14 +427,14 @@ def gpu_cross_section(
                     weights_g = _to_backend_array(provider, mod, weights)
 
                     # bnormq: [l, q]
-                    vxsigma = v_g[:, None] + roots_g[None, :] * sigma_safe[:, None]
+                    vxsigma = v_g[:, None] + Sqrt2 * roots_g[None, :] * sigma_safe[:, None]
                     bnormq_den = (
                         _atan((wngrid_end - vxsigma) / gamma_safe[:, None])
                         - _atan((wngrid_start - vxsigma) / gamma_safe[:, None])
                     )
                     bnormq = 1.0 / _safe_nonzero(provider, mod, bnormq_den)
 
-                    dvx = dv[:, :, None] - roots_g[None, None, :] * sigma_safe[None, :, None]
+                    dvx = dv[:, :, None] - Sqrt2 * roots_g[None, None, :] * sigma_safe[None, :, None]
                     lorenz = (
                         _atan((dvx + bin_half) / gamma_safe[None, :, None])
                         - _atan((dvx - bin_half) / gamma_safe[None, :, None])

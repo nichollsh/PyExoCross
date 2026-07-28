@@ -109,6 +109,37 @@ automatically expand range-loaded data to all transitions on first use.
 `all_transitions=True` remains available for eager loading. Partition functions
 and specific heats do not use transition-loaded data.
 
+## File and in-memory output
+
+Calculation functions accept `output='files'`, `'memory'`, or `'both'`.
+The default remains `files`.
+
+```python
+result = px.cross_sections(
+    data=data,
+    temperatures=[300, 500],
+    pressures=[0.1, 1.0],
+    output='memory',
+    log='none',
+)
+
+print(result)
+print(result.params)
+xsec = result.select(T=300, P=1.0)
+grid = result.coords['wavenumber']
+```
+
+Every in-memory result exposes `coords`, `units`, `conditions`, `data`,
+`params`, `timing`, and `select()`. In IPython or Spyder, type `result.` and
+press Tab to inspect these fields. Combined stick-spectrum and cross-section
+calculations require `product='stick_spectra'` or
+`product='cross_section'` in `select()`.
+
+`log='auto'` preserves the existing logging behaviour, `log='file'` requires
+`logs_path` or an input file, and `log='none'` keeps terminal output without a
+log file. The final terminal and log summaries report load, preparation,
+calculation, saving, and total wall times separately.
+
 ## CPU / GPU Compute Mode
 
 PyExoCross uses CPU mode by default. You can switch to GPU mode with

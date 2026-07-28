@@ -32,22 +32,27 @@ def save_hitran_partition_func(hitran_df, Ntemp, Tmax):
     En, gn = hitran_state_arrays(hitran_df)
     Ts = np.array(range(Ntemp, Tmax+1, Ntemp)) 
     partition_func = np.array([cal_partition_func(En, gn, T) for T in Ts], dtype=float)
-    t.end()
+    t.end('calculate')
     print('Finished calculating partition functions!\n')
 
-    print('Saving partition functions into file ...')   
+    print('Preparing partition function output ...')
     ts = Timer()    
     ts.start()     
     partition_func_df = pd.DataFrame()
     partition_func_df['T'] = Ts
     partition_func_df['Partition function'] = partition_func
+    from pyexocross.base.result import record, saving_enabled
+    record('partition_function', partition_func_df, {'temperature': Ts},
+           {'temperature': 'K', 'data': 'dimensionless'})
     
-    pf_folder = save_path + 'partition/'
-    ensure_dir(pf_folder)
-    pf_path = pf_folder + '__'.join(data_info[-2:]) + '.pf'
-    np.savetxt(pf_path, partition_func_df, fmt="%8.1f %15.4f")
-    ts.end()
+    pf_path = None
+    if saving_enabled():
+        pf_folder = save_path + 'partition/'
+        ensure_dir(pf_folder)
+        pf_path = pf_folder + '__'.join(data_info[-2:]) + '.pf'
+        np.savetxt(pf_path, partition_func_df, fmt="%8.1f %15.4f")
+    ts.end('save' if pf_path else None)
     print_file_info('Partition functions', ['T', 'Partition function'], ['%8.1f', '%15.4f'])
-    print('Partition functions file has been saved:', pf_path, '\n') 
-    print('Partition functions have been saved!\n')  
+    print('Partition functions file has been saved:', pf_path, '\n') if pf_path else print('Partition functions retained in memory.\n')
+    print('Partition function calculation finished!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

@@ -160,7 +160,7 @@ def read_exomolhr_df(read_path, data_info, min_wn, max_wn, unc_filter):
     exomolhr_df["E'"] = cal_Ep(exomolhr_df['E"'].values, exomolhr_df['v'].values)
     exomolhr_df = exomolhr_df.reset_index(drop=True)
 
-    t.end()
+    t.end('load')
     print_file_info('Line list', meta['exomolhr_col'], meta['exomolhr_fmt'])
     print('Finished reading line list!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

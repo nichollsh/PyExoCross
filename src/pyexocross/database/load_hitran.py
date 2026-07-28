@@ -182,7 +182,7 @@ def read_hitran_parfile(read_path, parfile_df, minv, maxv, unclimit, Slimit):
         hitran_df = hitran_df[hitran_df['Unc'] >= int(('%e' % unclimit)[-1])]
     if Slimit != 'None':
         hitran_df = hitran_df[hitran_df['S'] >= Slimit]
-    t.end()
+    t.end('load')
     hitran_col = ['M','I','v','S','A','gamma_air','gamma_self','E"','n_air','delta_air',
                   "V'",'V"',"Q'",'Q"','Ierr','Iref','flag',"g'",'g"']
     hitran_fmt = ['%2d','%1d','%12.6f','%10.3e','%10.3e','%5.4f','%5.4f','%10.4f','%4.2f','%8.6f',

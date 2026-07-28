@@ -44,7 +44,33 @@ from ..base.utils import Timer
 from ..database.data import LoadedData, loaddata
 
 
-def _ensure_logging(inp_filepath=None, logs_path=None):
+def help(function=None):
+    """Show PyExoCross calculation help or one function's full docstring."""
+    functions = {
+        name: globals()[name] for name in (
+            'partition_functions', 'specific_heats', 'cooling_functions',
+            'lifetimes', 'oscillator_strengths', 'stick_spectra',
+            'cross_sections', 'stick_spectra_cross_section',
+        )
+    }
+    if function is None:
+        print(
+            'PyExoCross calculation functions:\n  '
+            + '\n  '.join(f'px.{name}(...)' for name in functions)
+            + '\n\nCommon interactive options:\n'
+            '  output="files" | "memory" | "both"\n'
+            '  log="auto" | "file" | "none"\n\n'
+            'Use px.help("cross_sections") for function parameters.\n'
+            'After a memory calculation, use result.help().'
+        )
+        return
+    name = function.__name__ if callable(function) else str(function)
+    if name not in functions:
+        raise ValueError(f'Unknown calculation function {name!r}. Available: {list(functions)}')
+    print(functions[name].__doc__)
+
+
+def _ensure_logging(inp_filepath=None, logs_path=None, log='auto'):
     """
     Set up logging to file if not already active.
 
@@ -61,6 +87,12 @@ def _ensure_logging(inp_filepath=None, logs_path=None):
         Explicit log file path (used when calling with keyword args).
     """
     import pyexocross.base.log as _log_mod
+    if log not in ('auto', 'file', 'none'):
+        raise ValueError("log must be 'auto', 'file', or 'none'.")
+    if log == 'none':
+        if _log_mod._LOG_FILE_HANDLE is not None:
+            _log_mod.close_logging()
+        return
 
     # If logging is already active, nothing to do
     if _log_mod._LOG_FILE_HANDLE is not None:
@@ -77,6 +109,8 @@ def _ensure_logging(inp_filepath=None, logs_path=None):
             ensure_dir(log_dir + '/')
         log_path = logs_path
     else:
+        if log == 'file':
+            raise ValueError("log='file' requires logs_path or inp_filepath.")
         # No path given -- skip automatic logging
         return
 
@@ -231,7 +265,8 @@ def load(
             + ' are calculation parameters. Pass them to the corresponding '
             'calculation function instead of px.load.'
         )
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
     config = Config(
         inp_filepath=inp_filepath,
         cache=cache,
@@ -344,31 +379,35 @@ def conversion(inp_filepath=None, **kwargs):
             Chunk size for transitions (default: 100000).
     """
     data = kwargs.pop('data', None)
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
+    output = kwargs.pop('output', 'files')
+    if output != 'files':
+        raise ValueError("conversion currently supports output='files' only.")
     config = _calculation_config(inp_filepath, data, kwargs, conversion=1)
-    get_results(config, data=data)
+    return get_results(config, data=data)
 
 
 # Keep legacy aliases for backward compatibility
 def convert_exomol_to_hitran(inp_filepath=None, **kwargs):
     """Convert ExoMol to HITRAN format. See :func:`conversion`."""
     kwargs.setdefault('conversion_format', 'HITRAN')
-    conversion(inp_filepath=inp_filepath, **kwargs)
+    return conversion(inp_filepath=inp_filepath, **kwargs)
     
 def convert_exomolhr_to_hitran(inp_filepath=None, **kwargs):
     """Convert ExoMolHR to HITRAN format. See :func:`conversion`."""
     kwargs.setdefault('conversion_format', 'HITRAN')
-    conversion(inp_filepath=inp_filepath, **kwargs)
+    return conversion(inp_filepath=inp_filepath, **kwargs)
     
 def convert_exoatom_to_hitran(inp_filepath=None, **kwargs):
     """Convert ExoAtom to HITRAN format. See :func:`conversion`."""
     kwargs.setdefault('conversion_format', 'HITRAN')
-    conversion(inp_filepath=inp_filepath, **kwargs)
+    return conversion(inp_filepath=inp_filepath, **kwargs)
 
 def convert_hitran_to_exomol(inp_filepath=None, **kwargs):
     """Convert HITRAN to ExoMol format. See :func:`conversion`."""
     kwargs.setdefault('conversion_format', 'ExoMol')
-    conversion(inp_filepath=inp_filepath, **kwargs)
+    return conversion(inp_filepath=inp_filepath, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -403,14 +442,15 @@ def partition_functions(inp_filepath=None, **kwargs):
             Chunk size for transitions (default: 100000).
     """
     data = kwargs.pop('data', None)
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
     config = _calculation_config(
         inp_filepath,
         data,
         kwargs,
         partition_functions=1,
     )
-    get_results(config, data=data)
+    return get_results(config, data=data)
 
 
 # Legacy alias
@@ -432,14 +472,15 @@ def specific_heats(inp_filepath=None, **kwargs):
         Same as :func:`partition_functions`.
     """
     data = kwargs.pop('data', None)
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
     config = _calculation_config(
         inp_filepath,
         data,
         kwargs,
         specific_heats=1,
     )
-    get_results(config, data=data)
+    return get_results(config, data=data)
 
 
 # Legacy alias
@@ -462,9 +503,10 @@ def cooling_functions(inp_filepath=None, **kwargs):
     """
     data = kwargs.pop('data', None)
     data = requirealltransitions(data)
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
     config = _calculation_config(inp_filepath, data, kwargs, cooling_functions=1)
-    get_results(config, data=data)
+    return get_results(config, data=data)
 
 
 # Legacy alias
@@ -503,9 +545,10 @@ def lifetimes(inp_filepath=None, **kwargs):
     """
     data = kwargs.pop('data', None)
     data = requirealltransitions(data)
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
     config = _calculation_config(inp_filepath, data, kwargs, lifetimes=1)
-    get_results(config, data=data)
+    return get_results(config, data=data)
 
 
 # Legacy alias
@@ -552,7 +595,8 @@ def oscillator_strengths(inp_filepath=None, **kwargs):
         limit_yaxis : float, optional
             Lower limit for y-axis (default: 1e-30).
     """
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
     _remap_plot_kwargs(kwargs, {
         'plot': 'plot_oscillator_strength',
         'plot_method': 'plot_oscillator_strength_method',
@@ -563,7 +607,7 @@ def oscillator_strengths(inp_filepath=None, **kwargs):
     data = kwargs.pop('data', None)
     data = requirealltransitions(data)
     config = _calculation_config(inp_filepath, data, kwargs, oscillator_strengths=1)
-    get_results(config, data=data)
+    return get_results(config, data=data)
 
 
 # Legacy alias
@@ -667,7 +711,8 @@ def stick_spectra(inp_filepath=None, **kwargs):
     ... )
     """
     data = kwargs.pop('data', None)
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
     _remap_plot_kwargs(kwargs, {
         'plot': 'plot_stick_spectra',
         'plot_method': 'plot_stick_spectra_method',
@@ -681,7 +726,7 @@ def stick_spectra(inp_filepath=None, **kwargs):
         kwargs,
         stick_spectra=1,
     )
-    get_results(config, data=data)
+    return get_results(config, data=data)
 
 
 # ---------------------------------------------------------------------------
@@ -733,6 +778,12 @@ def cross_sections(inp_filepath=None, **kwargs):
             Unit for plotting axis (default: 'cm-1').
         limit_yaxis : float, optional
             Lower limit for y-axis (default: 1e-30).
+        output : {'files', 'memory', 'both'}, optional
+            Write files, return in-memory results, or do both. Default is
+            ``'files'`` for backward compatibility.
+        log : {'auto', 'file', 'none'}, optional
+            Control file logging. ``'none'`` keeps terminal output only.
+            ``'auto'`` preserves the existing behaviour.
 
         Notes
         -----
@@ -757,7 +808,8 @@ def cross_sections(inp_filepath=None, **kwargs):
     ... )
     """
     data = kwargs.pop('data', None)
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
     _remap_plot_kwargs(kwargs, {
         'plot': 'plot_cross_section',
         'plot_method': 'plot_cross_section_method',
@@ -771,7 +823,7 @@ def cross_sections(inp_filepath=None, **kwargs):
         kwargs,
         cross_sections=1,
     )
-    get_results(config, data=data)
+    return get_results(config, data=data)
 
 
 # Legacy alias
@@ -814,7 +866,8 @@ def stick_spectra_cross_section(inp_filepath=None, **kwargs):
     ... )
     """
     data = kwargs.pop('data', None)
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'))
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
     
     if 'plot' in kwargs:
         plot_val = kwargs.pop('plot')
@@ -844,4 +897,4 @@ def stick_spectra_cross_section(inp_filepath=None, **kwargs):
         stick_spectra=1,
         cross_sections=1,
     )
-    get_results(config, data=data)
+    return get_results(config, data=data)

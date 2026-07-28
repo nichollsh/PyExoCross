@@ -105,11 +105,30 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
         cutoff,
         T_list,
     )
+    wn = np.asarray(wn)
+    xsec = np.asarray(xsec)
+    from pyexocross.base.result import Condition, record, saving_enabled
+    Tvib = None
+    Trot = None
+    if temp_idx is not None:
+        if NLTEMethod == 'T' and Tvib_list_param:
+            Tvib = Tvib_list_param[temp_idx]
+        if NLTEMethod in ('T', 'D') and Trot_list_param:
+            Trot = Trot_list_param[temp_idx]
+    axis = 'wavenumber' if wn_wl == 'WN' else 'wavelength'
+    record(
+        'cross_section',
+        xsec,
+        {axis: wn},
+        {axis: 'cm-1' if wn_wl == 'WN' else wn_wl_unit,
+         'data': 'cm-1/(molecule cm-2)'},
+        Condition(T, P, Tvib, Trot),
+    )
+    if not saving_enabled():
+        return
     xsecs_foldername = save_path+'xsecs/files/'+data_info[0]+'/'+database+'/'
     ensure_dir(xsecs_foldername)
     configure_mpl_large_path_rendering()
-    wn = np.asarray(wn)
-    xsec = np.asarray(xsec)
     min_v = min(wn)
     max_v = max(wn)
     # Check if profile is pressure-dependent (Lorentzian/Voigt need pressure, but Doppler/Gaussian don't)
@@ -178,7 +197,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             pressure_dependent,
         )
         np.savetxt(xsec_filepath, xsec_df, fmt="%15.6f %15.8E")
-        ts.end()
+        ts.end('save')
         # File info printed once by caller
         print('Cross sections file has been saved:', xsec_filepath)
         
@@ -307,7 +326,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
                              + photo + LTE_NLTE + '.png')
             plt.savefig(xsec_plotpath, dpi=500)
             plt.close()  # Close figure to free memory and ensure it's saved
-            tp.end()
+            tp.end('save')
             print('Cross sections plot has been saved:', xsec_plotpath)
         else:
             pass
@@ -361,7 +380,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             pressure_dependent,
         )
         np.savetxt(xsec_filepath, xsec_df, fmt="%15.8E %15.8E")
-        ts.end()
+        ts.end('save')
         # File info printed once by caller
         print('Cross sections file has been saved:', xsec_filepath)       
         
@@ -445,7 +464,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
                              + photo + LTE_NLTE + '.png')
             plt.savefig(xsec_plotpath, dpi=500)
             plt.close()  # Close figure to free memory and ensure it's saved
-            tp.end()
+            tp.end('save')
             print('Cross sections plot has been saved:', xsec_plotpath)
         else:
             pass

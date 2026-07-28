@@ -24,7 +24,7 @@ COMMON = dict(
     read_path='/public/home/zhangjingxin/LHD/Program/Databases/ExoMolHR/', # '/Users/beryl/Academic/UCL/PhD/Data/database/ExoMolHR/',
     save_path='/public/home/zhangjingxin/LHD/Program/Data/pyexocross/gpu/', # '/Users/beryl/Academic/UCL/PhD/Data/pyexocross/',
     logs_path='/public/home/zhangjingxin/LHD/Program/Data/pyexocross/gpu/log/NO_ExoMolHR_gpu_cupy.log', # '/Users/beryl/Academic/UCL/PhD/Data/pyexocross/log/test_api_exomolhr.log',
-    cache='parquet',
+    cache='parquet',    
 )
 
 
@@ -130,7 +130,7 @@ def test_stick_spectra_cross_section():
         abs_emi='Ab',                   # Absorption or emission (default: 'Absorption')
         threshold=1e-30,                # Threshold filter (default: None)
         bin_size=1,                     # Bin size for wavenumber grid 
-        profile='SciPyVoigt',           # Line profile name (default: 'Gaussian')
+        profile='OliveroPseudoVoigt',   # Line profile name (default: 'Gaussian')
         predissociation=False,          # Predissociation (default: False)
         cutoff=25.0,                    # Cutoff distance in cm⁻¹ (default: None)
         broadeners=['Default'],         # Broadening species (default: ['Default'])

@@ -732,24 +732,26 @@ def print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, stick_x
     """
     P_str = f', P={P} bar' if P is not None else ''
     file_path_str = f': {file_path}' if file_path is not None else ''
+    from pyexocross.core import output
+    action = 'retained in memory' if output == 'memory' else 'file saved'
     if abs_emi == 'Ab':
         if NLTEMethod == 'L' or NLTEMethod == 'P':
-            print(f'{stick_xsec_str} file saved for T={T} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for T={T} K{P_str}{file_path_str}')
         elif NLTEMethod == 'T':
-            print(f'{stick_xsec_str} file saved for Tvib={Tvib} K, Trot={Trot} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for Tvib={Tvib} K, Trot={Trot} K{P_str}{file_path_str}')
         elif NLTEMethod == 'D':
-            print(f'{stick_xsec_str} file saved for T={T} K, Trot={Trot} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for T={T} K, Trot={Trot} K{P_str}{file_path_str}')
         else:
             raise ValueError("Please choose one LTE or non-LTE method from: 'L', 'T', 'D' or 'P'.")
     elif abs_emi == 'Em':
         if NLTEMethod == 'L':
-            print(f'{stick_xsec_str} file saved for T={T} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for T={T} K{P_str}{file_path_str}')
         elif NLTEMethod == 'T':
-            print(f'{stick_xsec_str} file saved for Tvib={Tvib} K, Trot={Trot} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for Tvib={Tvib} K, Trot={Trot} K{P_str}{file_path_str}')
         elif NLTEMethod == 'D':
-            print(f'{stick_xsec_str} file saved for Trot={Trot} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for Trot={Trot} K{P_str}{file_path_str}')
         elif NLTEMethod == 'P':
-            print(f'{stick_xsec_str} file saved{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action}{P_str}{file_path_str}')
         else:
             raise ValueError("Please choose one LTE or non-LTE method from: 'L', 'T', 'D' or 'P'.")
     else:

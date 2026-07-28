@@ -213,10 +213,10 @@ def save_exomol_lifetime(
                                    trans_filepath) for trans_filepath in tqdm(trans_filepaths)]
         lifetime_result = 1 / sum(np.array([future.result() for future in futures]))
         lifetime = np.array([f'{x:>12.4E}'.replace('INF','Inf') for x in lifetime_result])
-    t.end()
+    t.end('calculate')
     print('Finished reading all transitions and calculating lifetimes!\n')
 
-    print('Saving lifetimes into file ...')   
+    print('Preparing lifetime output ...')
     ts = Timer()    
     ts.start()  
     
@@ -224,24 +224,34 @@ def save_exomol_lifetime(
     (states_lifetime_df, states_lifetime_fmt) = insert_exomol_lifetime_column(states_df, lifetime, states_col, states_fmt)
     states_lifetime_fmt = adapt_energy_format(states_lifetime_df, states_lifetime_fmt)
     states_lifetime_df = convert_dtype_by_format(states_lifetime_df, states_lifetime_fmt)
+    from pyexocross.base.result import record, saving_enabled
+    record(
+        'lifetime',
+        states_lifetime_df,
+        {'state_id': states_lifetime_df.iloc[:, 0].to_numpy()},
+        {'state_id': 'dimensionless', 'data': 's'},
+    )
 
-    lf_folder = save_path + 'lifetime/'
-    ensure_dir(lf_folder)
-
-    if CompressYN == 'Y':
-        lf_path = lf_folder + '__'.join(data_info[-2:]) + '.states.bz2'
-        with bz2.open(lf_path, 'wt') as f:
-            np.savetxt(f, states_lifetime_df, fmt=' '.join(states_lifetime_fmt))
-    else:
-        lf_path = lf_folder + '__'.join(data_info[-2:]) + '.states'
-        np.savetxt(lf_path, states_lifetime_df, fmt=' '.join(states_lifetime_fmt))
+    lf_path = None
+    if saving_enabled():
+        lf_folder = save_path + 'lifetime/'
+        ensure_dir(lf_folder)
+        if CompressYN == 'Y':
+            lf_path = lf_folder + '__'.join(data_info[-2:]) + '.states.bz2'
+            with bz2.open(lf_path, 'wt') as f:
+                np.savetxt(f, states_lifetime_df, fmt=' '.join(states_lifetime_fmt))
+        else:
+            lf_path = lf_folder + '__'.join(data_info[-2:]) + '.states'
+            np.savetxt(lf_path, states_lifetime_df, fmt=' '.join(states_lifetime_fmt))
         
-    ts.end()
+    ts.end('save' if lf_path else None)
     states_lifetime_cols = list(states_lifetime_df.columns)
     tau_idx = states_lifetime_cols.index('tau') 
     states_lifetime_cols = states_lifetime_cols[:tau_idx] + ['tau'] + states_lifetime_cols[tau_idx:]
     states_lifetime_fmt[tau_idx] = '%12.4E'
     print_file_info('Lifetimes', list(dict.fromkeys(states_lifetime_cols)), states_lifetime_fmt)
-    print('Lifetimes file has been saved:', lf_path, '\n') 
-    print('Lifetimes have been saved!\n')    
+    if lf_path is not None:
+        print('Lifetimes file has been saved:', lf_path, '\n')
+    else:
+        print('Lifetimes retained in memory.\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

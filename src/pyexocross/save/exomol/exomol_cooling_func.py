@@ -197,19 +197,23 @@ def save_exomol_cooling_func(states_df, Ntemp, Tmax, trans_sources=None):
     cooling_func_df = pd.DataFrame()
     cooling_func_df['T'] = Ts
     cooling_func_df['cooling function'] = cooling_func
-    t.end()
+    from pyexocross.base.result import record, saving_enabled
+    record('cooling_function', cooling_func_df, {'temperature': Ts}, {'temperature': 'K'})
+    t.end('calculate')
     print('Finished reading all transitions and calculating cooling functions!\n')
     
-    print('Saving cooling functions into file ...')   
+    print('Preparing cooling function output ...')
     ts = Timer()    
     ts.start()     
-    cf_folder = save_path + 'cooling/'
-    ensure_dir(cf_folder)
-    cf_path = cf_folder + '__'.join(data_info[-2:]) + '.cf' 
-    np.savetxt(cf_path, cooling_func_df, fmt="%8.1f %20.8E")
-    ts.end()
+    cf_path = None
+    if saving_enabled():
+        cf_folder = save_path + 'cooling/'
+        ensure_dir(cf_folder)
+        cf_path = cf_folder + '__'.join(data_info[-2:]) + '.cf'
+        np.savetxt(cf_path, cooling_func_df, fmt="%8.1f %20.8E")
+    ts.end('save' if cf_path else None)
     print_file_info('Cooling functions', ['T', 'Cooling function'], ['%8.1f','%20.8E'])
-    print('Cooling functions file has been saved:', cf_path, '\n')  
-    print('Cooling functions have been saved!\n')  
+    print('Cooling functions file has been saved:', cf_path, '\n') if cf_path else print('Cooling functions retained in memory.\n')
+    print('Cooling function calculation finished!\n')
     # tqdm.write('Cooling functions has been saved!\n') 
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')  

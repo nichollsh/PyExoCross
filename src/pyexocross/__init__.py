@@ -34,11 +34,12 @@ Functions
 - ``px.download_exomol(...)``               -- Download ExoMol line-list files
 """
 
-__version__ = "1.1.10"
+__version__ = "1.1.11"
 
 from pyexocross.api import (
     # Run from .inp file
     run,
+    help,
     # Logging reset
     close_logging,
     # Primary API (snake_case plurals)
@@ -67,6 +68,7 @@ from pyexocross.api import (
     cross_section,
     stick_spectra_cross_section,
 )
+from pyexocross.base.result import Condition, Parameters, Result
 from pyexocross.download import (
     download,
     download_exoatom,
@@ -82,6 +84,7 @@ from pyexocross.download import (
 __all__ = [
     # Run from .inp
     'run',
+    'help',
     # Primary API
     'load',
     'load_data',
