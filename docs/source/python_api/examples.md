@@ -103,7 +103,7 @@ px.conversion(
     species_id=501,
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/', 
-    logs_path='/path/to/output/log/exomol_conversion.log',
+    logs_path='/path/to/output/log/exomol_conversion.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -131,7 +131,7 @@ px.partition_functions(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_pf.log',
+    logs_path='/path/to/output/log/exomol_pf.log',  # Use log='none' to disable file logging
     ntemp=1,
     tmax=5000
 )
@@ -149,7 +149,7 @@ px.specific_heats(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_cp.log',
+    logs_path='/path/to/output/log/exomol_cp.log',  # Use log='none' to disable file logging
     ntemp=1,
     tmax=5000
 )
@@ -167,7 +167,7 @@ px.cooling_functions(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_cf.log',
+    logs_path='/path/to/output/log/exomol_cf.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -188,7 +188,7 @@ px.lifetimes(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_lifetime.log',
+    logs_path='/path/to/output/log/exomol_lifetime.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -208,7 +208,7 @@ px.oscillator_strengths(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_os.log',
+    logs_path='/path/to/output/log/exomol_os.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -233,7 +233,7 @@ px.stick_spectra(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_stick.log',
+    logs_path='/path/to/output/log/exomol_stick.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -263,7 +263,7 @@ px.stick_spectra(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_stick_nlte.log',
+    logs_path='/path/to/output/log/exomol_stick_nlte.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -300,7 +300,7 @@ px.cross_sections(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_xsec.log',
+    logs_path='/path/to/output/log/exomol_xsec.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -337,7 +337,7 @@ px.cross_sections(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_xsec_nlte.log',
+    logs_path='/path/to/output/log/exomol_xsec_nlte.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -401,7 +401,7 @@ px.conversion(
     species_id=81,
     read_path='/path/to/Databases/ExoMolHR/',
     save_path='/path/to/output/', 
-    logs_path='/path/to/output/log/exomolhr_conversion.log',
+    logs_path='/path/to/output/log/exomolhr_conversion.log',  # Use log='none' to disable file logging
     ncputrans=1,    
     ncpufiles=1,
     chunk_size=100000,
@@ -428,7 +428,7 @@ px.stick_spectra(
     isotopologue='14N-16O',
     read_path='/path/to/Databases/ExoMolHR/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomolhr_stick.log',
+    logs_path='/path/to/output/log/exomolhr_stick.log',  # Use log='none' to disable file logging
     ncputrans=1,    
     ncpufiles=1,
     chunk_size=100000,
@@ -457,7 +457,7 @@ px.stick_spectra(
     isotopologue='14N-16O',
     read_path='/path/to/Databases/ExoMolHR/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomolhr_stick_nlte.log',
+    logs_path='/path/to/output/log/exomolhr_stick_nlte.log',  # Use log='none' to disable file logging
     ncputrans=1,    
     ncpufiles=1,
     chunk_size=100000,
@@ -492,7 +492,7 @@ px.cross_sections(
     isotopologue='14N-16O',
     read_path='/path/to/Databases/ExoMolHR/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomolhr_xsec.log',
+    logs_path='/path/to/output/log/exomolhr_xsec.log',  # Use log='none' to disable file logging
     ncputrans=1,    
     ncpufiles=1,
     chunk_size=100000,
@@ -530,7 +530,7 @@ px.cross_sections(
     isotopologue='14N-16O',
     read_path='/path/to/Databases/ExoMolHR/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomolhr_xsec_nlte.log',
+    logs_path='/path/to/output/log/exomolhr_xsec_nlte.log',  # Use log='none' to disable file logging
     ncputrans=1,    
     ncpufiles=1,
     chunk_size=100000,
@@ -592,7 +592,7 @@ px.conversion(
     species_id=601,
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol.log',
+    logs_path='/path/to/output/log/exomol.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -619,7 +619,7 @@ px.partition_functions(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_pf.log',
+    logs_path='/path/to/output/log/exoatom_pf.log',  # Use log='none' to disable file logging
     ntemp=1,
     tmax=6000
 )
@@ -636,7 +636,7 @@ px.specific_heats(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_cp.log',
+    logs_path='/path/to/output/log/exoatom_cp.log',  # Use log='none' to disable file logging
     ntemp=1,
     tmax=6000
 )
@@ -653,7 +653,7 @@ px.cooling_functions(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_cf.log',
+    logs_path='/path/to/output/log/exoatom_cf.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -673,7 +673,7 @@ px.lifetimes(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_lifetime.log',
+    logs_path='/path/to/output/log/exoatom_lifetime.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -692,7 +692,7 @@ px.oscillator_strengths(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_os.log',
+    logs_path='/path/to/output/log/exoatom_os.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -716,7 +716,7 @@ px.stick_spectra(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_stick_nlte.log',
+    logs_path='/path/to/output/log/exoatom_stick_nlte.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -750,7 +750,7 @@ px.stick_spectra(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_stick_nlte.log',
+    logs_path='/path/to/output/log/exoatom_stick_nlte.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -786,7 +786,7 @@ px.cross_sections(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_stick_nlte.log',
+    logs_path='/path/to/output/log/exoatom_stick_nlte.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -822,7 +822,7 @@ px.cross_sections(
     dataset='NIST',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_xsec_nlte.log',
+    logs_path='/path/to/output/log/exomol_xsec_nlte.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -862,7 +862,7 @@ px.cross_sections(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_xsec_nlte.log',
+    logs_path='/path/to/output/log/exoatom_xsec_nlte.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -921,7 +921,7 @@ px.conversion(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran.log',
+    logs_path='/path/to/output/log/hitran.log',  # Use log='none' to disable file logging
     chunk_size=100000,
     qnslabel_list=['J', 'X', 'Omega', 'v1', 'Sym', 'F'],
     qnsformat_list=['%5.1f', '%2s', '%3s', '%2d', '%1s', '%5s'],
@@ -950,7 +950,7 @@ px.partition_functions(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran_pf.log',   
+    logs_path='/path/to/output/log/hitran_pf.log',  # Use log='none' to disable file logging
     chunk_size=100000,
     ntemp=1,
     tmax=5000
@@ -970,7 +970,7 @@ px.specific_heats(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran_cp.log',
+    logs_path='/path/to/output/log/hitran_cp.log',  # Use log='none' to disable file logging
     chunk_size=100000,
     ntemp=1,
     tmax=5000
@@ -990,13 +990,13 @@ px.cooling_functions(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran_cf.log',
+    logs_path='/path/to/output/log/hitran_cf.log',  # Use log='none' to disable file logging
     chunk_size=100000,
     ntemp=1,
     tmax=5000,
     read_path='/Users/beryl/Academic/UCL/PhD/Data/database/HITRAN/', 
     save_path='/Users/beryl/Academic/UCL/PhD/Data/pyexocross/', 
-    logs_path='/Users/beryl/Academic/UCL/PhD/Data/pyexocross/log/test_api_hitran.log'
+    logs_path='/Users/beryl/Academic/UCL/PhD/Data/pyexocross/log/test_api_hitran.log'  # Use log='none' to disable file logging
 )
 ```
 
@@ -1013,7 +1013,7 @@ px.lifetimes(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran_lifetime.log',
+    logs_path='/path/to/output/log/hitran_lifetime.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -1036,7 +1036,7 @@ px.oscillator_strengths(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran_os.log',
+    logs_path='/path/to/output/log/hitran_os.log',  # Use log='none' to disable file logging
     chunk_size=100000,
     gf_or_f='f',
     plot=True,
@@ -1060,7 +1060,7 @@ px.stick_spectra(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran_stick_nlte.log',
+    logs_path='/path/to/output/log/hitran_stick_nlte.log',  # Use log='none' to disable file logging
     chunk_size=100000,
     temperatures=[296, 1000],
     wn_wl='WN',
@@ -1091,7 +1091,7 @@ px.stick_spectra(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran_stick_nlte.log',
+    logs_path='/path/to/output/log/hitran_stick_nlte.log',  # Use log='none' to disable file logging
     chunk_size=100000,
     qnslabel_list=['J', 'X', 'Omega', 'v1', 'Sym', 'F'],
     qnsformat_list=['%5.1f', '%2s', '%3s', '%2d', '%1s', '%5s'],
@@ -1128,7 +1128,7 @@ px.cross_sections(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran_xsec.log',
+    logs_path='/path/to/output/log/hitran_xsec.log',  # Use log='none' to disable file logging
     chunk_size=100000,
     qnslabel_list=['J', 'X', 'Omega', 'v1', 'Sym', 'F'],
     qnsformat_list=['%5.1f', '%2s', '%3s', '%2d', '%1s', '%5s'],
@@ -1170,7 +1170,7 @@ COMMON = dict(
     database='ExoMol',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_multiple_species.log'
+    logs_path='/path/to/output/log/exomol_multiple_species.log'  # Use log='none' to disable file logging
 )
 
 COMPUTE_PARAMS = dict(

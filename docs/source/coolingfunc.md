@@ -37,7 +37,7 @@ SpeciesID                               11
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/H2O_ExoMol_cf.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/H2O_ExoMol_cf.log    # Use None to disable log-file output
 
 
 # Functions #

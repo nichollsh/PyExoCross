@@ -95,6 +95,8 @@ format. Use the result with `data=` in `px.conversion`,
 | `read_path` | `str` | Yes* | Database root containing the input line list |
 | `save_path` | `str` | No | Output root retained for later calculations; default `./output/` |
 | `logs_path` | `str` or `None` | No | Log path retained for later calculations; `None` disables file logging |
+| `log` | `'auto'`, `'file'`, or `'none'` | No | File-logging mode; default `auto` |
+| `verbose` | `bool` | No | Show normal terminal output; default `True` |
 | `min_range` | `float` | No | Initial minimum wavenumber/wavelength; default `0` |
 | `max_range` | `float` | No | Initial maximum wavenumber/wavelength; default `30000` |
 | `wn_wl` | `str` | No | Range coordinate, `WN` or `WL`; default `WN` |
@@ -148,7 +150,7 @@ data = px.load(
     dataset='XAB',
     read_path='/path/to/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/MgH.log',
+    logs_path='/path/to/output/log/MgH.log',  # Use log='none' to disable file logging
     min_range=0,
     max_range=10000,
     cache='auto',  
@@ -397,7 +399,7 @@ Convert between ExoMol/ExoMolHR/ExoAtom and HITRAN line-list formats.
 | `species_id` | `int` | `0` | Species identifier (e.g. `501`, `81`) |
 | `read_path` | `str` | `'./'` | Path to input database |
 | `save_path` | `str` | `'./output/'` | Path for output files |
-| `logs_path` | `str` | `None` | Log file path |
+| `logs_path` | `str` or `None` | `None` | Log file path; `None` disables file logging |
 | `conversion_format` | `str` | `None` | `'ExoMo'` = HITRAN/HITEMP -> ExoMol/ExoAtom, `'HITRAN'` = ExoMol/ExoMolHR/ExoAtom -> HITRAN/HITEMP |
 | `conversion_min_freq` | `float` | `0` | Minimum frequency in cm⁻¹ |
 | `conversion_max_freq` | `float` | `1e10` | Maximum frequency in cm⁻¹ |
@@ -467,7 +469,7 @@ Calculate partition functions $Q(T) = \sum_n g_n^{\text{tot}} \exp(-c_2 \tilde{E
 | `species_id` | `int` | `0` | Species identifier |
 | `read_path` | `str` | `'./'` | Input database path |
 | `save_path` | `str` | `'./output/'` | Output path |
-| `logs_path` | `str` | `None` | Log file path |
+| `logs_path` | `str` or `None` | `None` | Log file path; `None` disables file logging |
 | `ntemp` | `int` | `1` | Temperature step in K |
 | `tmax` | `int` | `5000` | Maximum temperature in K |
 | `ncputrans` | `int` | `4` | CPU cores for transitions |
@@ -589,7 +591,7 @@ $$\tau_i = 1 / \sum_f A_{fi}$$
 | `species_id` | `int` | `0` | Species identifier |
 | `read_path` | `str` | `'./'` | Input database path |
 | `save_path` | `str` | `'./output/'` | Output path |
-| `logs_path` | `str` | `None` | Log file path |
+| `logs_path` | `str` or `None` | `None` | Log file path; `None` disables file logging |
 | `compress` | `bool` | `False` | `True` to save as `.bz2`; `False` for uncompressed |
 | `ncputrans` | `int` | `4` | CPU cores for transitions |
 | `ncpufiles` | `int` | `1` | Files processed simultaneously |
@@ -636,7 +638,7 @@ unweighted $f$-values.
 | `species_id` | `int` | `0` | Species identifier |
 | `read_path` | `str` | `'./'` | Input database path |
 | `save_path` | `str` | `'./output/'` | Output path |
-| `logs_path` | `str` | `None` | Log file path |
+| `logs_path` | `str` or `None` | `None` | Log file path; `None` disables file logging |
 | `gf_or_f` | `str` | `'f'` | `'gf'` for weighted, `'f'` for unweighted |
 | `ncputrans` | `int` | `4` | CPU cores for transitions |
 | `ncpufiles` | `int` | `1` | Files processed simultaneously |
@@ -695,7 +697,7 @@ Calculate LTE or Non-LTE stick spectra (absorption or emission).
 | **Paths** | | | |
 | `read_path` | `str` | `'./'` | Input database path |
 | `save_path` | `str` | `'./output/'` | Output path |
-| `logs_path` | `str` | `None` | Log file path |
+| `logs_path` | `str` or `None` | `None` | Log file path; `None` disables file logging |
 | **Physical conditions** | | | |
 | `temperatures` | `list[float]` | `[1000]` | Temperature(s) in K |
 | `wn_wl` | `str` | `'WN'` | `'WN'` (wavenumber) or `'WL'` (wavelength) |

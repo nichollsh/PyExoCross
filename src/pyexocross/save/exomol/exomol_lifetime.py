@@ -7,10 +7,9 @@ import re
 import bz2
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pyexocross.base.utils import Timer, ensure_dir
-from pyexocross.base.log import print_file_info
+from pyexocross.base.log import log_tqdm, print_file_info
 from pyexocross.base.large_file import read_trans_chunks, sourcename
 from pyexocross.calculation.calculate_lifetime import cal_lifetime
 from pyexocross.database.load_exomol import get_transfiles
@@ -66,8 +65,8 @@ def process_exomol_lifetime(states_df, trans_filepath):
     else:
         with _executor_context(max_workers=ncputrans) as trans_executor:
             futures = [trans_executor.submit(cal_lifetime, states_df, chunk)
-                        for chunk in tqdm(trans_chunks, desc=desc)]
-            lifetime = np.sum([future.result() for future in tqdm(futures, desc='Combining '+trans_filename)], axis=0)
+                        for chunk in log_tqdm(trans_chunks, desc=desc)]
+            lifetime = np.sum([future.result() for future in log_tqdm(futures, desc='Combining '+trans_filename)], axis=0)
     return lifetime
 
 def insert_exomol_lifetime_column(states_df, lifetime, states_col, states_fmt):
@@ -210,7 +209,7 @@ def save_exomol_lifetime(
     with _executor_context(max_workers=ncpufiles) as executor:
         # Submit reading tasks for each file
         futures = [executor.submit(process_exomol_lifetime, states_df, 
-                                   trans_filepath) for trans_filepath in tqdm(trans_filepaths)]
+                                   trans_filepath) for trans_filepath in log_tqdm(trans_filepaths)]
         lifetime_result = 1 / sum(np.array([future.result() for future in futures]))
         lifetime = np.array([f'{x:>12.4E}'.replace('INF','Inf') for x in lifetime_result])
     t.end('calculate')

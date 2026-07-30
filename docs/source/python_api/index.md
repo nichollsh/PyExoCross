@@ -135,10 +135,13 @@ press Tab to inspect these fields. Combined stick-spectrum and cross-section
 calculations require `product='stick_spectra'` or
 `product='cross_section'` in `select()`.
 
-`log='auto'` preserves the existing logging behaviour, `log='file'` requires
-`logs_path` or an input file, and `log='none'` keeps terminal output without a
-log file. The final terminal and log summaries report load, preparation,
-calculation, saving, and total wall times separately.
+`log='auto'` uses `logs_path` or the `.inp` `LogFilePath` when a valid path is
+available. `log='file'` requires a valid path. `log='none'` disables file
+logging. In `.inp` files, use `LogFilePath None` for the same no-log
+behaviour. `verbose=False` independently hides normal terminal output and
+progress bars. It does not disable an enabled log file. The final terminal
+and log summaries report load, preparation, calculation, saving, and total
+wall times separately.
 
 ## CPU / GPU Compute Mode
 

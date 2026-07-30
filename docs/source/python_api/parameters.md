@@ -53,7 +53,15 @@ species_id = species_main_id * 10 + species_sub_id
 |---|---|---|---|
 | `read_path` | `str` | `'./'` | Path to input data |
 | `save_path` | `str` | `'./output/'` | Path for output files |
-| `logs_path` | `str` | `None` | Log file path; `None` to skip logging |
+| `logs_path` | `str` or `None` | `None` | API log file path; `None` skips automatic file logging |
+| `log` | `'auto'`, `'file'`, or `'none'` | `'auto'` | File-logging mode; `'file'` requires a valid path and `'none'` disables logging |
+| `verbose` | `bool` | `True` | Show normal terminal output and progress bars; `False` keeps the terminal quiet |
+
+For `.inp` workflows, `LogFilePath None` is equivalent to omitting
+`logs_path` in an API call. `verbose` and file logging are independent, so
+`verbose=False` can still write a log when a valid path is configured.
+Calculations that receive `data` from `px.load()` inherit its `verbose` value
+unless the calculation call explicitly overrides it.
 
 ### `read_path` Conventions
 

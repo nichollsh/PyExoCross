@@ -8,7 +8,6 @@ import os
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from tqdm import tqdm
 from functools import partial
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pyexocross.base.utils import Timer

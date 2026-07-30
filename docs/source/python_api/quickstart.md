@@ -67,7 +67,7 @@ px.cross_sections(
     dataset='XAB',
     read_path='/path/to/Databases/ExoMol/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomol_xsec.log',
+    logs_path='/path/to/output/log/exomol_xsec.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -104,7 +104,7 @@ px.cross_sections(
     isotopologue='14N-16O',
     read_path='/path/to/Databases/ExoMolHR/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exomolhr_xsec.log',
+    logs_path='/path/to/output/log/exomolhr_xsec.log',  # Use log='none' to disable file logging
     ncputrans=1,    
     ncpufiles=1,
     chunk_size=100000,
@@ -143,7 +143,7 @@ px.cross_sections(
     dataset='NIST',
     read_path='/path/to/Databases/ExoAtom/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/exoatom_stick_nlte.log',
+    logs_path='/path/to/output/log/exoatom_stick_nlte.log',  # Use log='none' to disable file logging
     ncputrans=4,    
     ncpufiles=1,
     chunk_size=100000,
@@ -182,7 +182,7 @@ px.cross_sections(
     species_id=81,
     read_path='/path/to/Databases/HITRAN/',
     save_path='/path/to/output/',
-    logs_path='/path/to/output/log/hitran_xsec.log',
+    logs_path='/path/to/output/log/hitran_xsec.log',  # Use log='none' to disable file logging
     chunk_size=100000,
     run_mode='CPU',
     qnslabel_list=['J', 'X', 'Omega', 'v1', 'Sym', 'F'],
@@ -265,17 +265,30 @@ The first digits (`species_id // 10`) are the *species main ID*, and the last
 digit (`species_id % 10`) is the *species sub ID*.  For ExoMol/HITRAN these
 correspond to the HITRAN molecule and isotopologue numbers respectively.
 
-### Logging
+### Logging and terminal output
 
-All API calls support a `logs_path` parameter.  When provided, screen output
-is automatically duplicated to the log file.
+All API calls support `logs_path`, `log`, and `verbose`. A valid `logs_path`
+with `log='auto'` writes a log. Use `log='none'` to disable file logging.
+Use `verbose=False` to hide normal terminal output and progress bars while
+retaining any enabled log file.
 
 ```python
 px.partition_functions(
     ...,
-    logs_path='/path/to/output/log/my_run.log',
+    logs_path='/path/to/output/log/my_run.log',  # Use log='none' to disable file logging
+    log='auto',
+    verbose=False,
 )
 ```
+
+For `.inp` workflows, use:
+
+```text
+LogFilePath                             None
+Verbose                                 True
+```
+
+This shows normal terminal output without creating a log file.
 
 ## Next Steps
 

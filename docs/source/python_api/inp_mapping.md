@@ -25,7 +25,12 @@ reference when migrating from `.inp`-based workflows to the Python API.
 |---|---|---|---|
 | `ReadPath` | `read_path` | `/data/ExoMol/` | `'/data/ExoMol/'` |
 | `SavePath` | `save_path` | `/data/output/` | `'/data/output/'` |
-| `LogFilePath` | `logs_path` | `/data/output/log/run.log` | `'/data/output/log/run.log'` |
+| `LogFilePath` | `logs_path` | `/data/output/log/run.log` or `None` | `'/data/output/log/run.log'` or `None` |
+| `Verbose` | `verbose` | `True` or `False` | `True` or `False` |
+
+`LogFilePath None` disables `.inp` log-file output. In the API,
+`log='none'` always disables logging, while `log='file'` requires a valid
+`logs_path` or a valid `LogFilePath` in the input file.
 
 ---
 

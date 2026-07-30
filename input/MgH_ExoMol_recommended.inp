@@ -10,6 +10,7 @@ SpeciesID                               501
 ReadPath                                /Users/beryl/Academic/UCL/PhD/Data/database/ExoMol/
 SavePath                                /Users/beryl/Academic/UCL/PhD/Data/pyexocross/
 LogFilePath                             /Users/beryl/Academic/UCL/PhD/Data/pyexocross/log/MgH_ExoMol.log
+Verbose                                 True
 
 
 # Functions #

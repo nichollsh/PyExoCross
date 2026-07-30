@@ -81,7 +81,7 @@ SpeciesID                               501
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol_nlte.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol_nlte.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -163,7 +163,7 @@ SpeciesID                               81
 # File path #
 ReadPath                                /mnt/data/exomolhr/exomolhr_results/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross//log/NO_ExoMolHR_nlte.log
+LogFilePath                             /home/jingxin/data/pyexocross//log/NO_ExoMolHR_nlte.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -241,7 +241,7 @@ SpeciesID                               81
 # File path #
 ReadPath                                /home/jingxin/data/HITRAN/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/NO_HITRAN_nlte.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/NO_HITRAN_nlte.log    # Use None to disable log-file output
 
 
 
@@ -334,7 +334,7 @@ Dataset                                 NIST
 # File path #
 ReadPath                                /home/jingxin/data/NLTE/         #/mnt/data/exoatom/exoatom_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/Ar_QDB_nlte_density.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/Ar_QDB_nlte_density.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -419,7 +419,7 @@ Dataset                                 NIST
 # File path #
 ReadPath                                /home/jingxin/data/NLTE/         #/mnt/data/exoatom/exoatom_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/Ar_QDB_nlte_pop.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/Ar_QDB_nlte_pop.log    # Use None to disable log-file output
 
 
 # Functions #

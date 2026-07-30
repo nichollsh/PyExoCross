@@ -102,7 +102,8 @@ File path section records the file path for both reading and saving.
 
 `ReadPath` and `SavePath` are folder paths and should start with `/`, but don't need to end with `/`.
 
-`LogFilePath` is the file path of the log file, not the folder path.
+`LogFilePath` is the file path of the log file, not the folder path. Set it to
+`None` to disable log-file output. `None` is case-insensitive.
 
 &#x2705; /aaa/bbb/ccc
 
@@ -151,7 +152,21 @@ File path section records the file path for both reading and saving.
 
 `SavePath` is the folder path for saving all results obtained by the PyExoCross program.
 
-`LogFilePath` is the file path of the log file, the program can record the log output automatically.
+`LogFilePath` controls log-file output. Give a valid file path to record the
+run, or use `None` to disable logging.
+
+`Verbose` optionally controls normal terminal output. Use `True` to keep the
+current display behaviour or `False` to keep the terminal quiet. When
+`Verbose` is `False`, configured log-file output is still written.
+
+The two settings are independent:
+
+| `LogFilePath` | `Verbose` | Behaviour |
+|---|---:|---|
+| Valid path | `True` | Show normal terminal output and write the log |
+| Valid path | `False` | Keep the terminal quiet and write the log |
+| `None` | `True` | Show normal terminal output without a log file |
+| `None` | `False` | Keep the terminal quiet without a log file |
 
 *Example*
 
@@ -159,7 +174,9 @@ File path section records the file path for both reading and saving.
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol.log    # Use None to disable log-file output
+
+Verbose                                 True
 ```
 
 **For ExoMolHR database**
@@ -217,7 +234,7 @@ However, users can also rename the CSV filenames in any formats as long as `Isot
 
 `SavePath` is the folder path for saving all results obtained by the PyExoCross program.
 
-`LogFilePath` is the file path of the log file, the program can record the log output automatically.
+`LogFilePath` accepts a log file path or `None` to disable file logging.
 
 *Example*
 
@@ -225,7 +242,8 @@ However, users can also rename the CSV filenames in any formats as long as `Isot
 # File path #
 ReadPath                                /mnt/data/exomolhr/exomolhr_results/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/NO_ExoMolHR.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/NO_ExoMolHR.log    # Use None to disable log-file output
+
 ```
 
 **For ExoAtom database**
@@ -238,7 +256,7 @@ LogFilePath                             /home/jingxin/data/pyexocross/log/NO_Exo
 
 `SavePath` is the folder path for saving all results obtained by the PyExoCross program.
 
-`LogFilePath` is the file path of the log file, the program can record the log output automatically.
+`LogFilePath` accepts a log file path or `None` to disable file logging.
 
 ```
 └── exoatom_data
@@ -276,7 +294,8 @@ LogFilePath                             /home/jingxin/data/pyexocross/log/NO_Exo
 # File path #
 ReadPath                                /mnt/data/exoatom/exoatom_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/Li_NIST.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/Li_NIST.log    # Use None to disable log-file output
+
 ```
 
 **For HITRAN and HITEMP databases**
@@ -289,7 +308,7 @@ LogFilePath                             /home/jingxin/data/pyexocross/log/Li_NIS
 
 `SavePath` is the folder path for saving all results obtained by the PyExoCross program.
 
-`LogFilePath` is the file path of the log file, the program can record the log output automatically.
+`LogFilePath` accepts a log file path or `None` to disable file logging.
 
 ```
 └── HITRAN
@@ -319,7 +338,8 @@ LogFilePath                             /home/jingxin/data/pyexocross/log/Li_NIS
 # File path #
 ReadPath                                /home/jingxin/data/HITRAN/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_HITRAN.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_HITRAN.log    # Use None to disable log-file output
+
 ```
 
 ## Functions

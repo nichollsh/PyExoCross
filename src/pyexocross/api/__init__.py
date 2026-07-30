@@ -39,7 +39,12 @@ Available functions (snake_case, following PEP 8):
 import os
 from ..config import Config
 from ..core import get_results, printdatabaseinfo, printdeviceinfo
-from ..base.log import close_logging
+from ..base.log import (
+    close_logging,
+    normalize_verbose,
+    output_context,
+    parse_verbose_info,
+)
 from ..base.utils import Timer
 from ..database.data import LoadedData, loaddata
 
@@ -59,7 +64,8 @@ def help(function=None):
             + '\n  '.join(f'px.{name}(...)' for name in functions)
             + '\n\nCommon interactive options:\n'
             '  output="files" | "memory" | "both"\n'
-            '  log="auto" | "file" | "none"\n\n'
+            '  log="auto" | "file" | "none"\n'
+            '  verbose=True | False\n\n'
             'Use px.help("cross_sections") for function parameters.\n'
             'After a memory calculation, use result.help().'
         )
@@ -70,7 +76,7 @@ def help(function=None):
     print(functions[name].__doc__)
 
 
-def _ensure_logging(inp_filepath=None, logs_path=None, log='auto'):
+def _ensure_logging(inp_filepath=None, logs_path=None, log='auto', verbose=True):
     """
     Set up logging to file if not already active.
 
@@ -83,8 +89,13 @@ def _ensure_logging(inp_filepath=None, logs_path=None, log='auto'):
     ----------
     inp_filepath : str, optional
         Path to an .inp file from which the log path is parsed.
+        ``LogFilePath None`` disables file logging in ``'auto'`` mode.
     logs_path : str, optional
         Explicit log file path (used when calling with keyword args).
+    log : {'auto', 'file', 'none'}, optional
+        ``'file'`` requires a valid path. ``'none'`` disables file logging.
+    verbose : bool, optional
+        Show normal terminal output without changing file-logging behaviour.
     """
     import pyexocross.base.log as _log_mod
     if log not in ('auto', 'file', 'none'):
@@ -94,27 +105,59 @@ def _ensure_logging(inp_filepath=None, logs_path=None, log='auto'):
             _log_mod.close_logging()
         return
 
+    log_path = None
+    if inp_filepath is not None:
+        log_path = _log_mod.parse_logging_info(inp_filepath)
+        if log_path is None:
+            if log == 'file':
+                raise ValueError(
+                    "log='file' requires a valid LogFilePath in the input file."
+                )
+            if _log_mod._LOG_FILE_HANDLE is not None:
+                _log_mod.close_logging()
+            return
+
     # If logging is already active, nothing to do
     if _log_mod._LOG_FILE_HANDLE is not None:
         return
 
-    if inp_filepath is not None:
-        # Parse the LogFilePath row from the .inp file
-        log_path = _log_mod.parse_logging_info(inp_filepath)
-    elif logs_path:
+    if inp_filepath is None and logs_path:
         # Ensure log directory exists
         log_dir = os.path.dirname(logs_path)
         if log_dir:
             from pyexocross.base.utils import ensure_dir
             ensure_dir(log_dir + '/')
         log_path = logs_path
-    else:
+    elif inp_filepath is None:
         if log == 'file':
             raise ValueError("log='file' requires logs_path or inp_filepath.")
         # No path given -- skip automatic logging
         return
 
-    _log_mod.setup_logging(log_path)
+    _log_mod.setup_logging(log_path, announce=verbose)
+
+
+def _prepare_output(inp_filepath, kwargs, data=None):
+    """Resolve terminal verbosity and file logging for one public API call."""
+    if 'verbose' in kwargs:
+        verbose = normalize_verbose(kwargs['verbose'])
+    elif inp_filepath is not None:
+        verbose = parse_verbose_info(inp_filepath)
+        kwargs['verbose'] = verbose
+    elif isinstance(data, LoadedData):
+        verbose = normalize_verbose(getattr(data.config, 'verbose', True))
+        kwargs['verbose'] = verbose
+    else:
+        verbose = True
+        kwargs['verbose'] = verbose
+    log = kwargs.pop('log', 'auto')
+    _ensure_logging(
+        inp_filepath,
+        kwargs.get('logs_path'),
+        log,
+        verbose=verbose,
+    )
+    return verbose
 
 
 def _remap_plot_kwargs(kwargs, plot_map):
@@ -139,6 +182,27 @@ def _calculation_config(inp_filepath, data, kwargs, **flags):
         setattr(config, name, value)
     validateloadrange(data, config)
     return config
+
+
+def _calculate(
+    inp_filepath,
+    data,
+    kwargs,
+    verbose,
+    alltransitions=False,
+    **flags,
+):
+    """Build a calculation config and execute it with routed output."""
+    with output_context(verbose):
+        if alltransitions:
+            data = requirealltransitions(data)
+        config = _calculation_config(
+            inp_filepath,
+            data,
+            kwargs,
+            **flags,
+        )
+        return get_results(config, data=data)
 
 
 def validateloadrange(data, config):
@@ -265,33 +329,33 @@ def load(
             + ' are calculation parameters. Pass them to the corresponding '
             'calculation function instead of px.load.'
         )
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
-    config = Config(
-        inp_filepath=inp_filepath,
-        cache=cache,
-        cache_dir=cache_dir,
-        max_memory=max_memory,
-        refresh=refresh,
-        **kwargs,
-    )
-    config.to_globals()
-    printdeviceinfo(config)
-    printdatabaseinfo(config)
-    print()
-    timer = Timer().start()
-    print('Loading reusable line-list data ...')
-    data = loaddata(
-        config,
-        cache=cache,
-        cachedir=cache_dir,
-        maxmemory=max_memory,
-        refresh=refresh,
-        alltrans=all_transitions,
-    )
-    print('Finished loading reusable line-list data!')
-    timer.end()
-    return data
+    verbose = _prepare_output(inp_filepath, kwargs)
+    with output_context(verbose):
+        config = Config(
+            inp_filepath=inp_filepath,
+            cache=cache,
+            cache_dir=cache_dir,
+            max_memory=max_memory,
+            refresh=refresh,
+            **kwargs,
+        )
+        config.to_globals()
+        printdeviceinfo(config)
+        printdatabaseinfo(config)
+        print()
+        timer = Timer().start()
+        print('Loading reusable line-list data ...')
+        data = loaddata(
+            config,
+            cache=cache,
+            cachedir=cache_dir,
+            maxmemory=max_memory,
+            refresh=refresh,
+            alltrans=all_transitions,
+        )
+        print('Finished loading reusable line-list data!')
+        timer.end()
+        return data
 
 
 load_data = load
@@ -300,7 +364,7 @@ load_data = load
 # ---------------------------------------------------------------------------
 # Run (all functions from .inp file)
 # ---------------------------------------------------------------------------
-def run(inp_filepath, force_reload=False):
+def run(inp_filepath, force_reload=False, verbose=None, log='auto'):
     """
     Run all enabled functions from an .inp configuration file.
 
@@ -318,15 +382,25 @@ def run(inp_filepath, force_reload=False):
     force_reload : bool, optional
         If True, force re-parse of ``inp_filepath`` even when a cached
         configuration exists in this Python process. Default is False.
+    verbose : bool, optional
+        Show normal terminal output. If omitted, use the optional ``Verbose``
+        row in the input file, defaulting to True.
+    log : {'auto', 'file', 'none'}, optional
+        Control file logging. Default is ``'auto'``.
 
     Examples
     --------
     >>> import pyexocross as px
     >>> px.run('/path/to/MgH_ExoMol.inp')
     """
-    _ensure_logging(inp_filepath=inp_filepath)
-    config = Config(inp_filepath=inp_filepath, force_reload=force_reload)
-    get_results(config)
+    options = {'log': log}
+    if verbose is not None:
+        options['verbose'] = verbose
+    resolved_verbose = _prepare_output(inp_filepath, options)
+    with output_context(resolved_verbose):
+        config = Config(inp_filepath=inp_filepath, force_reload=force_reload)
+        config.verbose = resolved_verbose
+        return get_results(config)
 
 
 # ---------------------------------------------------------------------------
@@ -377,15 +451,21 @@ def conversion(inp_filepath=None, **kwargs):
             CPU cores for file I/O (default: 1).
         chunk_size : int, optional
             Chunk size for transitions (default: 100000).
+        verbose : bool, optional
+            Show normal terminal output. Default is True.
     """
     data = kwargs.pop('data', None)
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
+    verbose = _prepare_output(inp_filepath, kwargs, data=data)
     output = kwargs.pop('output', 'files')
     if output != 'files':
         raise ValueError("conversion currently supports output='files' only.")
-    config = _calculation_config(inp_filepath, data, kwargs, conversion=1)
-    return get_results(config, data=data)
+    return _calculate(
+        inp_filepath,
+        data,
+        kwargs,
+        verbose,
+        conversion=1,
+    )
 
 
 # Keep legacy aliases for backward compatibility
@@ -440,17 +520,18 @@ def partition_functions(inp_filepath=None, **kwargs):
             CPU cores for file I/O (default: 1).
         chunk_size : int, optional
             Chunk size for transitions (default: 100000).
+        verbose : bool, optional
+            Show normal terminal output. Default is True.
     """
     data = kwargs.pop('data', None)
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
-    config = _calculation_config(
+    verbose = _prepare_output(inp_filepath, kwargs, data=data)
+    return _calculate(
         inp_filepath,
         data,
         kwargs,
+        verbose,
         partition_functions=1,
     )
-    return get_results(config, data=data)
 
 
 # Legacy alias
@@ -472,15 +553,14 @@ def specific_heats(inp_filepath=None, **kwargs):
         Same as :func:`partition_functions`.
     """
     data = kwargs.pop('data', None)
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
-    config = _calculation_config(
+    verbose = _prepare_output(inp_filepath, kwargs, data=data)
+    return _calculate(
         inp_filepath,
         data,
         kwargs,
+        verbose,
         specific_heats=1,
     )
-    return get_results(config, data=data)
 
 
 # Legacy alias
@@ -502,11 +582,15 @@ def cooling_functions(inp_filepath=None, **kwargs):
         Same as :func:`partition_functions`.
     """
     data = kwargs.pop('data', None)
-    data = requirealltransitions(data)
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
-    config = _calculation_config(inp_filepath, data, kwargs, cooling_functions=1)
-    return get_results(config, data=data)
+    verbose = _prepare_output(inp_filepath, kwargs, data=data)
+    return _calculate(
+        inp_filepath,
+        data,
+        kwargs,
+        verbose,
+        alltransitions=True,
+        cooling_functions=1,
+    )
 
 
 # Legacy alias
@@ -544,11 +628,15 @@ def lifetimes(inp_filepath=None, **kwargs):
             Chunk size for transitions (default: 100000).
     """
     data = kwargs.pop('data', None)
-    data = requirealltransitions(data)
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
-    config = _calculation_config(inp_filepath, data, kwargs, lifetimes=1)
-    return get_results(config, data=data)
+    verbose = _prepare_output(inp_filepath, kwargs, data=data)
+    return _calculate(
+        inp_filepath,
+        data,
+        kwargs,
+        verbose,
+        alltransitions=True,
+        lifetimes=1,
+    )
 
 
 # Legacy alias
@@ -595,8 +683,8 @@ def oscillator_strengths(inp_filepath=None, **kwargs):
         limit_yaxis : float, optional
             Lower limit for y-axis (default: 1e-30).
     """
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
+    data = kwargs.pop('data', None)
+    verbose = _prepare_output(inp_filepath, kwargs, data=data)
     _remap_plot_kwargs(kwargs, {
         'plot': 'plot_oscillator_strength',
         'plot_method': 'plot_oscillator_strength_method',
@@ -604,10 +692,14 @@ def oscillator_strengths(inp_filepath=None, **kwargs):
         'plot_unit': 'plot_oscillator_strength_unit',
         'limit_yaxis': 'limit_yaxis_os',
     })
-    data = kwargs.pop('data', None)
-    data = requirealltransitions(data)
-    config = _calculation_config(inp_filepath, data, kwargs, oscillator_strengths=1)
-    return get_results(config, data=data)
+    return _calculate(
+        inp_filepath,
+        data,
+        kwargs,
+        verbose,
+        alltransitions=True,
+        oscillator_strengths=1,
+    )
 
 
 # Legacy alias
@@ -711,8 +803,7 @@ def stick_spectra(inp_filepath=None, **kwargs):
     ... )
     """
     data = kwargs.pop('data', None)
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
+    verbose = _prepare_output(inp_filepath, kwargs, data=data)
     _remap_plot_kwargs(kwargs, {
         'plot': 'plot_stick_spectra',
         'plot_method': 'plot_stick_spectra_method',
@@ -720,13 +811,13 @@ def stick_spectra(inp_filepath=None, **kwargs):
         'plot_unit': 'plot_stick_spectra_unit',
         'limit_yaxis': 'limit_yaxis_stick_spectra',
     })
-    config = _calculation_config(
+    return _calculate(
         inp_filepath,
         data,
         kwargs,
+        verbose,
         stick_spectra=1,
     )
-    return get_results(config, data=data)
 
 
 # ---------------------------------------------------------------------------
@@ -784,6 +875,9 @@ def cross_sections(inp_filepath=None, **kwargs):
         log : {'auto', 'file', 'none'}, optional
             Control file logging. ``'none'`` keeps terminal output only.
             ``'auto'`` preserves the existing behaviour.
+        verbose : bool, optional
+            Show normal terminal output. With ``False`` and file logging
+            enabled, normal output is written only to the log. Default is True.
 
         Notes
         -----
@@ -808,8 +902,7 @@ def cross_sections(inp_filepath=None, **kwargs):
     ... )
     """
     data = kwargs.pop('data', None)
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
+    verbose = _prepare_output(inp_filepath, kwargs, data=data)
     _remap_plot_kwargs(kwargs, {
         'plot': 'plot_cross_section',
         'plot_method': 'plot_cross_section_method',
@@ -817,13 +910,13 @@ def cross_sections(inp_filepath=None, **kwargs):
         'plot_unit': 'plot_cross_section_unit',
         'limit_yaxis': 'limit_yaxis_xsec',
     })
-    config = _calculation_config(
+    return _calculate(
         inp_filepath,
         data,
         kwargs,
+        verbose,
         cross_sections=1,
     )
-    return get_results(config, data=data)
 
 
 # Legacy alias
@@ -866,8 +959,7 @@ def stick_spectra_cross_section(inp_filepath=None, **kwargs):
     ... )
     """
     data = kwargs.pop('data', None)
-    log = kwargs.pop('log', 'auto')
-    _ensure_logging(inp_filepath, kwargs.get('logs_path'), log)
+    verbose = _prepare_output(inp_filepath, kwargs, data=data)
     
     if 'plot' in kwargs:
         plot_val = kwargs.pop('plot')
@@ -890,11 +982,11 @@ def stick_spectra_cross_section(inp_filepath=None, **kwargs):
         kwargs.setdefault('limit_yaxis_stick_spectra', limit_val)
         kwargs.setdefault('limit_yaxis_xsec', limit_val)
 
-    config = _calculation_config(
+    return _calculate(
         inp_filepath,
         data,
         kwargs,
+        verbose,
         stick_spectra=1,
         cross_sections=1,
     )
-    return get_results(config, data=data)

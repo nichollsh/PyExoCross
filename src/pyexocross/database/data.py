@@ -10,8 +10,8 @@ import time
 from dataclasses import dataclass
 
 import pandas as pd
-from tqdm import tqdm
 
+from pyexocross.base.log import log_tqdm
 from pyexocross.base.large_file import TransSource
 from pyexocross.base.qn_metadata import normalized_states_columns
 from pyexocross.database.load_exomol import (
@@ -316,13 +316,12 @@ def writerangecache(filepath, states, cachepath, chunksize, lower, upper, statec
     writer = None
     count = textcolumns(filepath)
     chunks = transitionchunks(filepath, chunksize)
-    progress = tqdm(
+    chunks = log_tqdm(
+        chunks,
         desc='Building cache ' + os.path.basename(cachepath),
-        unit='lines',
-        unit_scale=True,
+        unit='chunks',
     )
     for chunk in chunks:
-        progress.update(len(chunk))
         upperstate = stateindex.reindex(chunk[0].to_numpy())
         lowerstate = stateindex.reindex(chunk[1].to_numpy())
         wavenumber = upperstate['E'].to_numpy() - lowerstate['E'].to_numpy()
@@ -340,7 +339,6 @@ def writerangecache(filepath, states, cachepath, chunksize, lower, upper, statec
         if writer is None:
             writer = pq.ParquetWriter(temppath, table.schema, compression='zstd')
         writer.write_table(table, row_group_size=100_000)
-    progress.close()
     if writer is None:
         empty = {
             f'c{index}': pd.Series(dtype='int64' if index < 2 else 'float64')

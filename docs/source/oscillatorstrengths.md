@@ -61,7 +61,7 @@ SpeciesID                               21
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_ExoMol_os.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_ExoMol_os.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -105,7 +105,7 @@ SpeciesID                               21
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_HITRAN_os.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_HITRAN_os.log    # Use None to disable log-file output
 
 
 # Functions #

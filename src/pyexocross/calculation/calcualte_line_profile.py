@@ -608,7 +608,11 @@ def PseudoRoccoVoigt(alpha, gamma):
     bhalfy = ne.evaluate('y_safe+Sqrtln2*exp(-0.6055*y_safe+0.0718*y_safe**2-0.0049*y_safe**3+0.000136*y_safe**4)')
     hV = ne.evaluate('alpha / Sqrtln2 * bhalfy')
     Vy = ne.evaluate('bhalfy*erfcx_y')
-    eta = ne.evaluate('(Vy-Sqrtln2)/(Vy*OneminSqrtPIln2)')
+    mu = ne.evaluate('(Vy-Sqrtln2)/(Vy*OneminSqrtPIln2)')
+    # Di Rocco's mu weights equal-height, non-unit-area components.
+    # Convert it to the Lorentzian fraction used by the unit-area
+    # Gaussian and Lorentzian profiles in PseudoVoigt_profile.
+    eta = ne.evaluate('mu*SqrtPI*Vy')
     hV = np.where(y > 10.0, gamma, hV)
     eta = np.where(y > 10.0, 1.0, eta)
     return hV, eta

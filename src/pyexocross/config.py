@@ -13,6 +13,7 @@ import pandas as pd
 from tabulate import tabulate
 
 from pyexocross.base.input import inp_para, parse_TP_values
+from pyexocross.base.log import normalize_verbose, parse_verbose_info
 from pyexocross.base.utils import ensure_dir
 from pyexocross.base.constants import *
 from pyexocross.base.qn_metadata import qn_formats_for_labels
@@ -59,6 +60,7 @@ class Config:
         from pyexocross.base.config_manager import ConfigManager
         params = ConfigManager.get_config(inp_filepath, force_reload=force_reload)
         self._set_attributes(params)
+        self.verbose = parse_verbose_info(inp_filepath)
     
     def _load_from_kwargs(self, **kwargs):
         """Load configuration from keyword arguments with defaults."""
@@ -82,6 +84,9 @@ class Config:
         self.read_path = kwargs.get('read_path', getattr(self, 'read_path', './'))
         self.save_path = kwargs.get('save_path', getattr(self, 'save_path', './output/'))
         self.logs_path = kwargs.get('logs_path', getattr(self, 'logs_path', './pyexocross.log'))
+        self.verbose = normalize_verbose(
+            kwargs.get('verbose', getattr(self, 'verbose', True))
+        )
         self.output = str(kwargs.get('output', getattr(self, 'output', 'files'))).lower()
         if self.output not in ('files', 'memory', 'both'):
             raise ValueError("output must be 'files', 'memory', or 'both'.")
@@ -98,9 +103,10 @@ class Config:
         
         # Ensure directories exist
         ensure_dir(self.save_path)
-        log_dir = os.path.dirname(self.logs_path)
-        if log_dir:
-            ensure_dir(log_dir + '/')
+        if self.logs_path:
+            log_dir = os.path.dirname(self.logs_path)
+            if log_dir:
+                ensure_dir(log_dir + '/')
         
         # Function flags
         self.conversion = kwargs.get('conversion', getattr(self, 'conversion', 0))

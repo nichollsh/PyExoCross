@@ -7,6 +7,12 @@ import concurrent.futures as cf
 import sys
 from pyexocross.config import Config
 from pyexocross.core import get_results
+from pyexocross.base.log import (
+    output_context,
+    parse_logging_info,
+    parse_verbose_info,
+    setup_logging,
+)
 
 
 def main():
@@ -42,9 +48,14 @@ Examples:
         cf.ProcessPoolExecutor = cf.ThreadPoolExecutor
     
     try:
-        config = Config(inp_filepath=args.path)
-        get_results(config)
-        print('Done!')
+        verbose = parse_verbose_info(args.path)
+        logpath = parse_logging_info(args.path)
+        if logpath is not None:
+            setup_logging(logpath, announce=verbose)
+        with output_context(verbose):
+            config = Config(inp_filepath=args.path)
+            get_results(config)
+            print('Done!')
     except Exception as e:
         print(f'Error: {e}', file=sys.stderr)
         sys.exit(1)

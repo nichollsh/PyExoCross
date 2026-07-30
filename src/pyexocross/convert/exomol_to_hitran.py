@@ -9,7 +9,6 @@ import re
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from tqdm import tqdm
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
@@ -19,6 +18,7 @@ from ..base import (
     MAX_LARGE_FILE_WORKERS,
     print_conversion_info,
     print_file_info,
+    log_tqdm,
     Tref,
 )
 from ..base.large_file import (
@@ -592,8 +592,8 @@ def process_exomol2hitran_linelist(states_df, trans_filepath):
         else:
             with _executor_context(max_workers=ncputrans) as trans_executor:
                 futures = [trans_executor.submit(convert_exomol2hitran_linelist, states_df, chunk)
-                           for chunk in tqdm(trans_chunks, desc=desc)]
-                hitran_res_df = combine_fn([future.result() for future in tqdm(futures, desc='Combining '+trans_filename)])
+                           for chunk in log_tqdm(trans_chunks, desc=desc)]
+                hitran_res_df = combine_fn([future.result() for future in log_tqdm(futures, desc='Combining '+trans_filename)])
     return hitran_res_df
 
 def conversion_exomol2hitran(states_df, trans_sources=None):
@@ -631,7 +631,7 @@ def conversion_exomol2hitran(states_df, trans_sources=None):
     with _executor_context(max_workers=ncpufiles) as executor:
         # Submit reading tasks for each file
         futures = [executor.submit(process_exomol2hitran_linelist,states_df,
-                                   trans_filepath) for trans_filepath in tqdm(trans_filepaths)]
+                                   trans_filepath) for trans_filepath in log_tqdm(trans_filepaths)]
         hitran_res_df = pd.concat([future.result() for future in futures])
     if len(hitran_res_df) == 0:
         raise ValueError(

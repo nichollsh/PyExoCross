@@ -7,7 +7,6 @@ import os
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pyexocross.base.utils import Timer, ensure_dir
 from pyexocross.base.log import log_tqdm, print_file_info

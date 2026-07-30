@@ -11,7 +11,6 @@ import subprocess
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed, wait, FIRST_COMPLETED
 
 from .constants import (
@@ -22,6 +21,7 @@ from .constants import (
     LARGE_WRITE_CHUNK_ROWS,
 )
 from .utils import ensure_dir
+from .log import log_tqdm
 
 
 @dataclass(frozen=True)
@@ -209,7 +209,7 @@ def process_large_chunks(trans_reader, handler, combine_fn, zero_factory, desc,
     accumulator = None
     with executor_class(max_workers=max_workers) as executor:
         futures = set()
-        for trans_df_chunk in tqdm(trans_reader, desc=desc):
+        for trans_df_chunk in log_tqdm(trans_reader, desc=desc):
             futures.add(executor.submit(handler, trans_df_chunk))
             if len(futures) >= max_inflight:
                 done, futures = wait(futures, return_when=FIRST_COMPLETED)

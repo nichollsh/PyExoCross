@@ -8,8 +8,8 @@ import glob
 import os
 import numpy as np
 from tabulate import tabulate
-from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
+from pyexocross.base.log import log_tqdm
 
 
 # Set for one get_results() invocation. Save helpers import these names lazily.
@@ -349,10 +349,10 @@ def get_results(config, data=None):
                     with ProcessPoolExecutor(max_workers=ncputrans) as trans_executor:
                         futures = [
                             trans_executor.submit(cal_lifetime, states_df, trans_chunk)
-                            for trans_chunk in tqdm(trans_chunks, desc='Processing ' + trans_filename)
+                            for trans_chunk in log_tqdm(trans_chunks, desc='Processing ' + trans_filename)
                         ]
                         lifetime_sum += np.sum(
-                            [future.result() for future in tqdm(futures, desc='Combining ' + trans_filename)],
+                            [future.result() for future in log_tqdm(futures, desc='Combining ' + trans_filename)],
                             axis=0,
                         )
                 # Avoid division by zero; entries with zero A-sum correspond to infinite lifetime

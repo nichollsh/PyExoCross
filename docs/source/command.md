@@ -41,13 +41,22 @@ If you want to run program in conda environment which is named as 'exomol', plea
 If you need to run program in background, please use command:
 
 ```bash
-# Recommended: Without log file (the program will record log automatically)
+# Discard redirected terminal output. LogFilePath still controls log-file output.
 nohup python -u run.py -p ./input/H2O_exomol.inp > /dev/null 2>&1
-# Save log file
+# Save redirected terminal output separately
 nohup python -u run.py -p ./input/H2O_exomol.inp > ./output/H2O_exomol.out 2>&1 &
 # OR 
 nohup /home/username/anaconda3/envs/exomol/bin/python -u run.py -p ./input/H2O_exomol.inp > ./output/H2O_exomol.out 2>&1 &
 ```
+
+To disable PyExoCross log-file output, set this in the input file:
+
+```text
+LogFilePath                             None
+```
+
+This is independent of terminal output. Use `Verbose False` to hide normal
+terminal output and progress bars.
 
 ## Notes for input file
 

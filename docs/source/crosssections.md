@@ -271,7 +271,7 @@ SpeciesID                               11
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/H2O_ExoMol_xsec.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/H2O_ExoMol_xsec.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -339,7 +339,7 @@ SpeciesID                               81
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/NO_HITRAN_xsec_T2000_wl150-1000.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/NO_HITRAN_xsec_T2000_wl150-1000.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -407,7 +407,7 @@ SpeciesID                               81
 # File path #
 ReadPath                                /home/jingxin/data/HITRAN/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/NO_HITRAN_xsec_T1000_wn1000-5000.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/NO_HITRAN_xsec_T1000_wn1000-5000.log    # Use None to disable log-file output
 
 
 # Functions #

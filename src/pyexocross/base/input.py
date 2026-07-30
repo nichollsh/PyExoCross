@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from .constants import num_cpus
+from .log import parse_logging_info
 from .qn_metadata import qn_labels_formats_from_states, qn_formats_for_labels
 from .utils import ensure_dir
 
@@ -263,17 +264,8 @@ def inp_para(inp_filepath):
     # File path
     read_path = (inp_df[col0.isin(['ReadPath'])][1].values[0] + '/').replace('//','/')
     save_path = (inp_df[col0.isin(['SavePath'])][1].values[0] + '/').replace('//','/')
-    logs_path_raw = inp_df[col0.isin(['LogFilePath'])][1].values[0]
-    logs_path_raw = logs_path_raw.replace('//','/').strip()
-    if logs_path_raw == '':
-        raise ValueError("LogFilePath cannot be empty.")
-    log_dir = os.path.dirname(logs_path_raw)
-    log_name = os.path.basename(logs_path_raw)
-    if log_dir == '':
-        log_dir = os.getcwd()
+    logs_path = parse_logging_info(inp_filepath)
     ensure_dir(save_path)
-    ensure_dir(log_dir + '/')
-    logs_path = os.path.join(log_dir, log_name)
     if database == 'ExoMolHR':
         dataset = _resolve_exomolhr_filepaths(read_path, molecule, isotopologue)
         data_info = [molecule, isotopologue, dataset]

@@ -7,7 +7,6 @@ import os
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pyexocross.base.utils import Timer, ensure_dir
 from pyexocross.base.log import log_tqdm, print_file_info
@@ -135,7 +134,7 @@ def process_exomol_oscillator_strength(states_df, trans_filepath):
     if large_file:
         print('Large transition file detected (>1 GB). Streaming chunks sequentially to reduce memory usage.')
         result_frames = []
-        for trans_df_chunk in tqdm(trans_reader, desc=desc):
+        for trans_df_chunk in log_tqdm(trans_reader, desc=desc):
             chunk_df = process_exomol_oscillator_strength_chunk(states_df, trans_df_chunk)
             if not chunk_df.empty:
                 result_frames.append(chunk_df)
@@ -150,9 +149,9 @@ def process_exomol_oscillator_strength(states_df, trans_filepath):
         else:
             with _executor_context(max_workers=ncputrans) as trans_executor:
                 futures = [trans_executor.submit(process_exomol_oscillator_strength_chunk, states_df, chunk)
-                           for chunk in tqdm(trans_chunks, desc=desc)]
+                           for chunk in log_tqdm(trans_chunks, desc=desc)]
                 chunk_frames = [
-                    df for df in (future.result() for future in tqdm(futures, desc='Combining '+trans_filename))
+                    df for df in (future.result() for future in log_tqdm(futures, desc='Combining '+trans_filename))
                     if df is not None and not df.empty and not df.dropna(how='all').empty
                 ]
                 if chunk_frames:
@@ -197,7 +196,7 @@ def save_exomol_oscillator_strength(states_df, trans_sources=None):
     with _executor_context(max_workers=ncpufiles) as executor:
         # Submit reading tasks for each file
         futures = [executor.submit(process_exomol_oscillator_strength,states_df,
-                                   trans_filepath) for trans_filepath in tqdm(trans_filepaths)]
+                                   trans_filepath) for trans_filepath in log_tqdm(trans_filepaths)]
         result_frames = [
             df for df in (future.result() for future in futures)
             if df is not None and not df.empty and not df.dropna(how='all').empty
