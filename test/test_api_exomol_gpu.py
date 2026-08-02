@@ -24,8 +24,10 @@ COMMON = dict(
     dataset='XAB',
     read_path='/public/home/zhangjingxin/LHD/Program/Databases/ExoMol/', # '/Users/beryl/Academic/UCL/PhD/Data/database/ExoMol/', 
     save_path='/public/home/zhangjingxin/LHD/Program/Data/pyexocross/gpu/', # '/Users/beryl/Academic/UCL/PhD/Data/pyexocross/gpu/',
-    logs_path='/public/home/zhangjingxin/LHD/Program/Data/pyexocross/gpu/log/MgH_ExoMol_gpu.log', # '/Users/beryl/Academic/UCL/PhD/Data/pyexocross/gpu/log/MgH_ExoMol_gpu.log',
+    logs_path=None, # '/public/home/zhangjingxin/LHD/Program/Data/pyexocross/gpu/log/MgH_ExoMol_gpu.log', # '/Users/beryl/Academic/UCL/PhD/Data/pyexocross/gpu/log/MgH_ExoMol_gpu.log',
+    log='none',
     cache='parquet', 
+    verbose=False,
 )
 
 
