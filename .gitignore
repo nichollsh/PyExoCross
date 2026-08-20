@@ -142,6 +142,9 @@ note/
 .output/
 output/
 
+opacity_comparison*.png
+opacity_comparison*.pdf
+
 # Test code
 .pyexocross.ipynb
 .pyexocross.py

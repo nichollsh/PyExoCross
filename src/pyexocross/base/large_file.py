@@ -13,6 +13,8 @@ import pandas as pd
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed, wait, FIRST_COMPLETED
 
+TMPDIR = os.getenv('TMPDIR', '/tmp')
+
 from .constants import (
     DEFAULT_CHUNK_SIZE,
     LARGE_TRANS_FILE_BYTES,
@@ -43,7 +45,7 @@ def is_large_trans_file(trans_filepath):
         return False
 
 # Decompress Large .trans.bz2 Files
-def command_decompress(trans_filename):
+def command_decompress(trans_filename, to_tmpdir=True):
     """
     Decompress a bzip2-compressed transition file.
 
@@ -63,7 +65,10 @@ def command_decompress(trans_filename):
         - Flag indicating if decompression was performed (1) or file already existed (0)
     """
     # Directory where the decompressed .trans files will be saved
-    trans_dir = Path(trans_filename).parent / 'decompressed'
+    if to_tmpdir:
+        trans_dir = Path(TMPDIR) / Path(trans_filename).name / 'decompressed'
+    else:
+        trans_dir = Path(trans_filename).parent / 'decompressed'
     ensure_dir(str(trans_dir))
     trans_file = os.path.join(trans_dir, trans_filename.split('/')[-1].replace('.bz2', ''))
     if os.path.exists(trans_file):
@@ -71,6 +76,7 @@ def command_decompress(trans_filename):
     else:
         command = f'bunzip2 < {trans_filename} > {trans_file}'
         print('Decompressing file:', trans_filename)
+        print('Command:', command)
         subprocess.run(command, shell=True)
         num = 1
     return(trans_file, num)

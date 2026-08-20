@@ -69,8 +69,8 @@ def plot_oscillator_strength(oscillator_strength_df):
     else:
         raise ValueError('Please wirte the unit of wavelength in the input file: um or nm.')       
     plt.ylabel('Oscillator strength, ('+gfORf.lower()+')')
-    plt.legend()
-    leg = plt.legend()                  # Get the legend object.
+    plt.legend(loc='upper left')  # Place legend in upper right corner
+    leg = plt.legend(loc='upper right')                  # Get the legend object.
     for line in leg.get_lines():
         line.set_linewidth(1.0)         # Change the line width for the legend.
     os_plot = (os_plot_folder+data_info[0]+'__'+data_info[1]+'__'+database+'__'+gfORf.lower()

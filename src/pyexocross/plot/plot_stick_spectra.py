@@ -220,7 +220,7 @@ def plot_stick_spectra(stick_spectra_df, T=None, Tvib=None, Trot=None):
     else:
         raise ValueError("Please choose 'LTE' or 'Non-LTE'; if choose 'Non-LTE', please choose one non-LTE method from: 'T', 'D' or 'P'.")
     #plt.title(database+' '+data_info[0]+' intensity') 
-    leg = ax.legend()                  # Get the legend object.
+    leg = ax.legend(loc='upper left')                  # Get the legend object.
     # for line in leg.legend_handles:
     #     line.set_height(1.5)           # Change the line width for the legend.
     str_min_wnl = str(int(np.floor(min_v)))

@@ -297,8 +297,8 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
                     print(f"Warning: Invalid max_xsec_val ({max_xsec_val}), skipping ylim setting")
             # plt.title(database+' '+data_info[0]+' '+abs_emi+' Cross-Section with '+ profile_label)
             plt.ylabel(f'Cross-section, {xsec_y_unit}')
-            plt.legend()
-            leg = plt.legend()                  # Get the legend object.
+            plt.legend(loc='upper left')  # Place legend in upper right corner
+            leg = plt.legend(loc='upper right')                  # Get the legend object.
             for line in leg.get_lines():
                 line.set_linewidth(1.0)         # Change the line width for the legend.
             # Use appropriate values for filename based on plot type
@@ -443,8 +443,8 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             #plt.title(database+' '+data_info[0]+' '+abs_emi+' Cross-Section with '+ profile_label) 
             plt.xlabel(plot_unit_str)
             plt.ylabel(f'Cross-section, {xsec_y_unit}')
-            plt.legend()
-            leg = plt.legend()                  # Get the legend object.
+            plt.legend(loc='upper left')  # Place legend in upper right corner
+            leg = plt.legend(loc='upper right')                  # Get the legend object.
             for line in leg.get_lines():
                 line.set_linewidth(1.0)         # Change the line width for the legend.
             str_min_wnl = str(int(np.floor(min_v_value)))

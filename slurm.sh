@@ -11,10 +11,12 @@
 
 # CHANGE
 #SBATCH --gpus-per-node=1
-#SBATCH --mem=64GB
-#SBATCH --time=00-03:00:00
+#SBATCH --mem=256GB
+#SBATCH --time=01-00:00:00
 #SBATCH --cpus-per-task=30
-CONFIG="input/H2O_ExoMol_xsec.inp"
+
+# CONFIG="input/H2_ExoMol_RACPPK_xsec.inp"
+CONFIG="input/H2O_ExoMol_POKAZATEL_xsec.inp
 
 
 echo "Home dir:          $HOME"
