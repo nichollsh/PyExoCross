@@ -61,7 +61,7 @@ SpeciesID                               21
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_ExoMol_os.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_ExoMol_os.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -79,10 +79,10 @@ CrossSections                           0
 NCPUtrans                               4
 NCPUfiles                               4
 ChunkSize                               1000000
-RunMode                                 CPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when RunMode=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+Device                                  CPU                       # CPU(default) or GPU
+GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 
 
 # Calculate oscillator strengths #
@@ -105,7 +105,7 @@ SpeciesID                               21
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_HITRAN_os.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_HITRAN_os.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -123,7 +123,7 @@ CrossSections                           0
 NCPUtrans                               4
 NCPUfiles                               4
 ChunkSize                               1000000
-RunMode                                 CPU                       # CPU(default) or GPU
+Device                                  CPU                       # CPU(default) or GPU
 
 
 # Calculate oscillator strengths #

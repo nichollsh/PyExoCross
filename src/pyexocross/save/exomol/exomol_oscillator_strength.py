@@ -7,7 +7,6 @@ import os
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pyexocross.base.utils import Timer, ensure_dir
 from pyexocross.base.log import log_tqdm, print_file_info
@@ -15,6 +14,7 @@ from pyexocross.base.large_file import (
     is_large_trans_file,
     read_trans_chunks,
     save_large_txt,
+    sourcename,
 )
 from pyexocross.calculation.calculate_para import cal_v
 from pyexocross.calculation.calculate_oscillator_strength import cal_oscillator_strength
@@ -124,8 +124,8 @@ def process_exomol_oscillator_strength(states_df, trans_filepath):
     # Import legacy-style configuration variables from core (set via Config.to_globals()).
     from pyexocross.core import ncputrans 
 
-    trans_filename = trans_filepath.split('/')[-1]
-    print('Processeing transitions file:', trans_filename)
+    trans_filename = sourcename(trans_filepath)
+    print('Processing transitions file:', trans_filename)
     use_cols = [0,1,2]
     use_names = ['uid','lid','A']
     large_file = is_large_trans_file(trans_filepath)
@@ -134,7 +134,7 @@ def process_exomol_oscillator_strength(states_df, trans_filepath):
     if large_file:
         print('Large transition file detected (>1 GB). Streaming chunks sequentially to reduce memory usage.')
         result_frames = []
-        for trans_df_chunk in tqdm(trans_reader, desc=desc):
+        for trans_df_chunk in log_tqdm(trans_reader, desc=desc):
             chunk_df = process_exomol_oscillator_strength_chunk(states_df, trans_df_chunk)
             if not chunk_df.empty:
                 result_frames.append(chunk_df)
@@ -149,9 +149,9 @@ def process_exomol_oscillator_strength(states_df, trans_filepath):
         else:
             with _executor_context(max_workers=ncputrans) as trans_executor:
                 futures = [trans_executor.submit(process_exomol_oscillator_strength_chunk, states_df, chunk)
-                           for chunk in tqdm(trans_chunks, desc=desc)]
+                           for chunk in log_tqdm(trans_chunks, desc=desc)]
                 chunk_frames = [
-                    df for df in (future.result() for future in tqdm(futures, desc='Combining '+trans_filename))
+                    df for df in (future.result() for future in log_tqdm(futures, desc='Combining '+trans_filename))
                     if df is not None and not df.empty and not df.dropna(how='all').empty
                 ]
                 if chunk_frames:
@@ -160,7 +160,7 @@ def process_exomol_oscillator_strength(states_df, trans_filepath):
                     oscillator_strength_df = pd.DataFrame(columns=['uid','lid','os','v'])
     return oscillator_strength_df
 
-def save_exomol_oscillator_strength(states_df):
+def save_exomol_oscillator_strength(states_df, trans_sources=None):
     """
     Main function to calculate and save oscillator strengths for ExoMol database.
 
@@ -183,16 +183,20 @@ def save_exomol_oscillator_strength(states_df):
         PlotOscillatorStrengthYN,
     )
 
-    print('Calculate oscillator strengths.')  
+    print('\nCalculate oscillator strengths.')  
     tot = Timer()
     tot.start()
     print('Reading transitions and calculating oscillator strengths ...')    
-    trans_filepaths = get_transfiles(read_path, data_info)
+    trans_filepaths = (
+        trans_sources
+        if trans_sources is not None
+        else get_transfiles(read_path, data_info)
+    )
     # Process multiple files in parallel
     with _executor_context(max_workers=ncpufiles) as executor:
         # Submit reading tasks for each file
         futures = [executor.submit(process_exomol_oscillator_strength,states_df,
-                                   trans_filepath) for trans_filepath in tqdm(trans_filepaths)]
+                                   trans_filepath) for trans_filepath in log_tqdm(trans_filepaths)]
         result_frames = [
             df for df in (future.result() for future in futures)
             if df is not None and not df.empty and not df.dropna(how='all').empty
@@ -202,25 +206,37 @@ def save_exomol_oscillator_strength(states_df):
         else:
             oscillator_strength_df = pd.DataFrame(columns=['uid','lid','os','v'])
     oscillator_strength_df.sort_values(by=['v'], ascending=True, inplace=True)  
+    from pyexocross.base.result import record, saving_enabled
+    record(
+        'oscillator_strength',
+        oscillator_strength_df,
+        {'wavenumber': oscillator_strength_df['v'].to_numpy()},
+        {'wavenumber': 'cm-1'},
+    )
     # oscillator_strength_df  = oscillator_strength_df.sort_values('v').reset_index(drop=True)
-    tot.end()
+    tot.end('calculate')
     print('Finished reading all transitions and calculating oscillator strengths!\n')
 
-    print('Saving oscillator strengths into file ...')   
+    print('Preparing oscillator strength output ...')
     ts = Timer()    
     ts.start()
-    os_folder = save_path + 'oscillator_strength/files/'+data_info[0]+'/'+database+'/'
-    ensure_dir(os_folder)
-    os_path = os_folder+'__'.join(data_info[-2:])+'_'+gfORf.lower()+'.os' 
+    os_path = None
     os_format = "%12d %12d %12.4E %15.6f"
-    save_large_txt(os_path, oscillator_strength_df, fmt=os_format)
-    ts.end()
+    if saving_enabled():
+        os_folder = save_path + 'oscillator_strength/files/'+data_info[0]+'/'+database+'/'
+        ensure_dir(os_folder)
+        os_path = os_folder+'__'.join(data_info[-2:])+'_'+gfORf.lower()+'.os'
+        save_large_txt(os_path, oscillator_strength_df, fmt=os_format)
+    ts.end('save' if os_path else None)
     print_file_info('Oscillator strengths', oscillator_strength_df.columns, ['%12d', '%12d', '%12.4E', '%15.6f'])
     print('Wavenumber in unit of cm⁻¹')
-    print('Oscillator strengths file has been saved:', os_path, '\n')  
+    if os_path is not None:
+        print('Oscillator strengths file has been saved:', os_path, '\n')
+    else:
+        print('Oscillator strengths retained in memory.\n')
     
     # Plot oscillator strengths and save it as .png.
-    if PlotOscillatorStrengthYN == 'Y':
+    if PlotOscillatorStrengthYN == 'Y' and saving_enabled():
         plot_oscillator_strength(oscillator_strength_df)
-    print('\nOscillator strengths have been saved!\n')  
+    print('\nOscillator strength calculation finished!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

@@ -25,7 +25,12 @@ reference when migrating from `.inp`-based workflows to the Python API.
 |---|---|---|---|
 | `ReadPath` | `read_path` | `/data/ExoMol/` | `'/data/ExoMol/'` |
 | `SavePath` | `save_path` | `/data/output/` | `'/data/output/'` |
-| `LogFilePath` | `logs_path` | `/data/output/log/run.log` | `'/data/output/log/run.log'` |
+| `LogFilePath` | `logs_path` | `/data/output/log/run.log` or `None` | `'/data/output/log/run.log'` or `None` |
+| `Verbose` | `verbose` | `True` or `False` | `True` or `False` |
+
+`LogFilePath None` disables `.inp` log-file output. In the API,
+`log='none'` always disables logging, while `log='file'` requires a valid
+`logs_path` or a valid `LogFilePath` in the input file.
 
 ---
 
@@ -43,12 +48,12 @@ reference when migrating from `.inp`-based workflows to the Python API.
 | `CrossSections` | `px.cross_sections()` | `1` | Call function directly |
 | `StickSpectraCrossSection` | `px.stick_spectra_cross_section()` | `1` | Call function directly |
 
-:::{note}
+***Note***
+
 In the Python API, you don't need to set these toggle flags.  Simply calling
 a function (e.g. `px.cross_sections(...)`) automatically enables that
 function.  The toggle is only relevant in `.inp` files or when using
 `px.run()`.
-:::
 
 ---
 
@@ -59,7 +64,7 @@ function.  The toggle is only relevant in `.inp` files or when using
 | `NCPUtrans` | `ncputrans` | `2` | `2` (int) |
 | `NCPUfiles` | `ncpufiles` | `4` | `4` (int) |
 | `ChunkSize` | `chunk_size` | `1000000` | `1000000` (int) |
-| `RunMode` | `run_mode` | `CPU` or `GPU` | `'CPU'` / `'GPU'` (str, default `'CPU'`) |
+| `Device` or `RunMode` | `device` or `run_mode` | `CPU` or `GPU` | `'CPU'` / `'GPU'` (str, default `'CPU'`) |
 | `GPUBackend` | `gpu_backend` | `AUTO` / `CUDA` / `PyTorch-CUDA` / `CuPy-CUDA` / `MPS` | `'AUTO'` / `'CUDA'` / `'PyTorch-CUDA'` / `'CuPy-CUDA'` / `'MPS'` (str, default `'AUTO'`) |
 | `GPUBatchLines` | `gpu_batch_lines` | `8192` | `8192` (int, optional) |
 | `GPUBatchGrid` | `gpu_batch_grid` | `256` | `256` (int, optional) |
@@ -101,14 +106,14 @@ GPUBatchGrid                            256
 ```python
 px.cross_sections(
     ...,
-    run_mode='CPU',
+    device='CPU',
 )
 ```
 
 ```python
 px.cross_sections(
     ...,
-    run_mode='GPU',
+    device='GPU',
     gpu_backend='AUTO',
     gpu_batch_lines=8192,
     gpu_batch_grid=256,
@@ -116,14 +121,14 @@ px.cross_sections(
 ```
 
 ```python
-px.cross_sections(..., run_mode='GPU', gpu_backend='CUDA')
-px.cross_sections(..., run_mode='GPU', gpu_backend='PyTorch-CUDA')
-px.cross_sections(..., run_mode='GPU', gpu_backend='CuPy-CUDA')
-px.cross_sections(..., run_mode='GPU', gpu_backend='MPS')
+px.cross_sections(..., device='GPU', gpu_backend='CUDA')
+px.cross_sections(..., device='GPU', gpu_backend='PyTorch-CUDA')
+px.cross_sections(..., device='GPU', gpu_backend='CuPy-CUDA')
+px.cross_sections(..., device='GPU', gpu_backend='MPS')
 ```
 
-Notes:
-- Omit these kwargs to use default CPU mode (`run_mode='CPU'`).
+***Notes***:
+- Omit these kwargs to use default CPU mode (`device='CPU'`).
 - Use `gpu_backend='AUTO'` unless you explicitly want a fixed backend.
 - Backend fallback order for `AUTO`: `PyTorch-CUDA -> CuPy-CUDA -> MPS -> CPU`.
 - Backend fallback order for `CUDA`: `PyTorch-CUDA -> CuPy-CUDA -> MPS -> CPU`.
@@ -138,6 +143,13 @@ Notes:
 |---|---|---|---|
 | `QNslabel` | `qnslabel_list` | `+/- e/f ElecState v Lambda Sigma Omega` | `['+/-', 'e/f', 'ElecState', 'v', 'Lambda', 'Sigma', 'Omega']` |
 | `QNsformat` | `qnsformat_list` | `%1s %1s %12s %3d %3d %5.1f %5.1f` | `['%1s', '%1s', '%12s', '%3d', '%3d', '%5.1f', '%5.1f']` |
+
+
+For ExoMol and ExoAtom input, QN labels and formats are derived from
+`.def.json`, `.def`, or `.adef.json` when these rows are omitted. Namespace
+prefixes are shortened before matching, for example `Herzberg:n1` is used as
+`n1`.\
+For ExoMolHR input, QN labels and formats are derived from the default metadata inside PyExoCross automatically.
 
 ---
 
@@ -202,6 +214,10 @@ Notes:
 | `PlotStickSpectraWnWl` | `plot_wn_wl`, `plot_unit` | `wn cm-1` | `'WN'`, `'cm-1'` |
 | `Y-axisLimitStickSpectra` | `limit_yaxis` | `1e-30` | `float` |
 
+`WnWlUnit` and `Range` define the saved `.stick` coordinate. The first column
+is wavenumber for `wn cm-1` and wavelength for `wl nm` or `wl um`.
+`PlotStickSpectraWnWl` only controls the plot x-axis.
+
 ---
 
 ## Cross Sections
@@ -223,6 +239,11 @@ All stick spectra parameters above, plus:
 | `PlotCrossSectionMethod` | `plot_method` | `log` | `'log'` or `'linear'` |
 | `PlotCrossSectionWnWl` | `plot_wn_wl`, `plot_unit` | `wn cm-1` | `'WN'`, `'cm-1'` |
 | `Y-axisLimitXsec` | `limit_yaxis` | `1e-30` | `float` |
+
+`Npoints/BinSize` uses the same unit as `WnWlUnit`. Therefore `BinSize 0.01`
+means 0.01 nm for `wl nm`, 0.01 μm for `wl um`, and 0.01 cm⁻¹ for
+`wn cm-1`. The saved `.xsec` first column follows `WnWlUnit`; plotting can use
+a different coordinate via `PlotCrossSectionWnWl`.
 
 ---
 

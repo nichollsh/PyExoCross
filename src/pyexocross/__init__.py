@@ -20,6 +20,7 @@ Quick start::
 Functions
 ---------
 - ``px.run(inp_filepath)``                  -- Run all functions from .inp file
+- ``px.load(...)``                          -- Load reusable ExoMol/ExoAtom data
 - ``px.conversion(...)``                    -- Format conversion
 - ``px.partition_functions(...)``           -- Partition functions
 - ``px.specific_heats(...)``                -- Specific heats
@@ -29,14 +30,21 @@ Functions
 - ``px.stick_spectra(...)``                 -- Stick spectra
 - ``px.cross_sections(...)``                -- Cross sections
 - ``px.stick_spectra_cross_section(...)``   -- Stick spectra and Cross section calculation simultaneously
+- ``px.download(...)``                      -- Download database files
+- ``px.download_exomol(...)``               -- Download ExoMol line-list files
 """
 
-__version__ = "1.1.2"
+__version__ = "1.1.13"
 
 from pyexocross.api import (
     # Run from .inp file
     run,
+    help,
+    # Logging reset
+    close_logging,
     # Primary API (snake_case plurals)
+    load,
+    load_data,
     conversion,
     partition_functions,
     specific_heats,
@@ -60,11 +68,26 @@ from pyexocross.api import (
     cross_section,
     stick_spectra_cross_section,
 )
+from pyexocross.base.result import Condition, Parameters, Result
+from pyexocross.download import (
+    download,
+    download_exoatom,
+    download_exomol,
+    download_exomolhr,
+    download_hitran,
+    get_exoatom_urls,
+    get_exomol_urls,
+    get_exomolhr_urls,
+    get_hitran_targets,
+)
 
 __all__ = [
     # Run from .inp
     'run',
+    'help',
     # Primary API
+    'load',
+    'load_data',
     'conversion',
     'partition_functions',
     'specific_heats',
@@ -87,4 +110,13 @@ __all__ = [
     'stick_spectra',
     'cross_section',
     'stick_spectra_cross_section',
+    'download',
+    'download_exoatom',
+    'download_exomol',
+    'download_exomolhr',
+    'download_hitran',
+    'get_exoatom_urls',
+    'get_exomol_urls',
+    'get_exomolhr_urls',
+    'get_hitran_targets',
 ]

@@ -1,5 +1,6 @@
 # Import all what we need
 import os
+import re
 import json
 import urllib3
 import requests
@@ -14,31 +15,37 @@ url_dir = '/scratch/p321409/opacity_lbl/exomol/url/'
 # Full path to the urls file (derived from url_dir)
 url_path = os.path.join(url_dir, 'api__urls.txt')
 file_path = '/scratch/p321409/opacity_lbl/exomol/'
-# molecules = ['H2O', 'CO2', 'H2', 'H2S', 'N2', 'SiO']
-# molecules = ['CH4', 'NH3', 'SO2', 'HCN', 'O3', 'N2O', 'O2']
-molecules = ['OH']
-
-# Preferred isotopologues per molecule (must match ExoMol API keys).
-# Example values (replace with desired isotopologues):
-preferred_isotopologues = {
-    'H2O': ['(1H)2(16O)',],
-    'CO2': ['(12C)(16O)2',],
-    'H2': ['(1H)2',],
-    'H2S': ['(1H)2(32S)',],
-    'N2': ['(14N)2',],
-    'SiO': ['(28Si)(16O)',],
-    'CO': ['(12C)(16O)',],
-    'CH4': ['(12C)(1H)4',],
-    'NH3': ['(14N)(1H)3',],
-    'SO2': ['(32S)(16O)2',],
-    'HCN': ['(1H)(12C)(14N)',],
-    'O3': ['(16O)3',],
-    'N2O': ['(14N)2(16O)',],
-    'O2': ['(16O)2',],
-    'SiO2': ['(28Si)(16O)2',],
-    'MgO': ['(24Mg)(16O)',],
-    'OH': ['(16O)(1H)']
+all_isotopologues = {
+    # 'MgH': {
+    #     '24Mg-1H': {'wn_range': None},
+    #     '25Mg-1H': {'wn_range': None},
+    # },
+    # 'H2O': {
+    #     '1H2-16O': {'wn_range': [41000, 41200]},
+    # },
+    'H2O': {'1H2-16O': {'wn_range': None}},
+    'CO2': {'12C-16O2': {'wn_range': None}},
+    'H2': {'1H2': {'wn_range': None}},
+    'H2S': {'1H2-32S': {'wn_range': None}},
+    'N2': {'14N2': {'wn_range': None}},
+    'SiO': {'28Si-16O': {'wn_range': None}},
+    'CO': {'12C-16O': {'wn_range': None}},
+    'CH4': {'12C-1H4': {'wn_range': None}}, 
+    'NH3': {'14N-1H3': {'wn_range': None}},
+    'SO2': {'32S-16O2': {'wn_range': None}},
+    'HCN': {'1H-12C-14N': {'wn_range': None}},
+    'O3': {'16O3': {'wn_range': None}},
+    'N2O': {'14N2-16O': {'wn_range': None}},
+    'O2': {'16O2': {'wn_range': None}},
+    'SiO2': {'28Si-16O2': {'wn_range': None}},
+    'MgO': {'24Mg-16O': {'wn_range': None}},
+    'OH': {'16O-1H': {'wn_range': None}},
 }
+
+# get one molecule and its isotopologues
+molecule_isotopologues = dict([('OH', all_isotopologues.get('OH'))])
+print('molecule_isotopologues:', molecule_isotopologues)
+
 ########################################################
 
 # Get API URLs
@@ -50,20 +57,95 @@ def get_api(molecules):
         api_url.append('https://exomol.com/api/?molecule=*&datatype=linelist'.replace('*',molecule_str[i]))
     return(api_url)
 
+
 # Get Download Links with API
-def get_urls(molecules, preferred_isotopologues):
-    """Get the download url from API for preferred isotopologues only."""
+def normalize_molecule_isotopologues(molecule_isotopologues):
+    molecules = list(molecule_isotopologues.keys())
+    isotopologue_configs = []
+    for molecule in molecules:
+        molecule_isos = molecule_isotopologues[molecule]
+        if molecule_isos in (None, ''):
+            isotopologue_configs.append(None)
+        elif isinstance(molecule_isos, str):
+            isotopologue_configs.append({molecule_isos: {'wn_range': None}})
+        elif isinstance(molecule_isos, dict):
+            isotopologue_config = {}
+            for isotopologue, config in molecule_isos.items():
+                if isinstance(config, dict):
+                    isotopologue_config[isotopologue] = config
+                else:
+                    isotopologue_config[isotopologue] = {'wn_range': config}
+            isotopologue_configs.append(isotopologue_config)
+        else:
+            isotopologue_configs.append(
+                {isotopologue: {'wn_range': None} for isotopologue in molecule_isos}
+            )
+    return molecules, isotopologue_configs
+
+
+def get_wn_range(isotopologue_config):
+    if isotopologue_config is None:
+        return None
+    return isotopologue_config.get('wn_range')
+
+
+def strict_states_filename(isotopologue, dataset):
+    return f'{isotopologue}__{dataset}.states.bz2'
+
+
+def strict_trans_filename(isotopologue, dataset):
+    return f'{isotopologue}__{dataset}.trans.bz2'
+
+
+def strict_segmented_trans_pattern(isotopologue, dataset):
+    return re.compile(
+        rf'^{re.escape(isotopologue)}__{re.escape(dataset)}__(\d+)-(\d+)\.trans\.bz2$'
+    )
+
+
+def infer_iso_slug_from_url(url, dataset):
+    filename = os.path.basename(url)
+    suffixes = [
+        f'__{dataset}.states.bz2',
+        f'__{dataset}.trans.bz2',
+    ]
+    for suffix in suffixes:
+        if filename.endswith(suffix):
+            return filename[:-len(suffix)]
+
+    segmented_match = re.match(rf'^(.+)__{re.escape(dataset)}__\d+-\d+\.trans\.bz2$', filename)
+    if segmented_match is not None:
+        return segmented_match.group(1)
+
+    return None
+
+
+def trans_url_in_wn_range(url, isotopologue, dataset, wn_range):
+    filename = os.path.basename(url)
+    if filename == strict_trans_filename(isotopologue, dataset):
+        return True
+
+    match = strict_segmented_trans_pattern(isotopologue, dataset).match(filename)
+    if match is None:
+        return False
+
+    if wn_range in (None, []):
+        return True
+
+    wn_min, wn_max = wn_range
+    file_min = int(match.group(1))
+    file_max = int(match.group(2))
+    return file_min >= wn_min and file_max <= wn_max
+
+
+def get_urls(molecule_isotopologues):
+    """Get the download url from API."""
+    molecules, isotopologue_configs = normalize_molecule_isotopologues(molecule_isotopologues)
     api_url = get_api(molecules)
     urls = []
     for i in tqdm(range(len(molecules))):
-        preferred = preferred_isotopologues.get(molecules[i])
-        if not preferred:
-            raise ValueError(
-                f"Preferred isotopologues not provided for {molecules[i]}. "
-                "Populate preferred_isotopologues with desired API keys."
-            )
-        preferred_set = set(preferred)
-        response = requests.get(api_url[i])
+        target_isotopologue_config = isotopologue_configs[i]
+        response = requests.get(api_url[i], timeout=60)
         if(response.status_code != 200):
             print('ExoMol API Error' + str(response.status_code))
 
@@ -71,41 +153,60 @@ def get_urls(molecules, preferred_isotopologues):
         else:
             content = response.text            # Get the relevant content.
             json_dict = json.loads(content)    # Convert json into dictionary.
-            iso_formulas = list(json_dict.keys())
-            found_preferred = set()
-            for iso_formula in iso_formulas:
-                if iso_formula not in preferred_set:
-                    continue
-                found_preferred.add(iso_formula)
-                datasets = list(json_dict[iso_formula]['linelist'].keys())[1:]
-                for dataset in datasets:
-                    files_info = json_dict[iso_formula]['linelist'][dataset]
-                    if files_info['recommended'] == True:
-                        files_meta = files_info['files']
+            found_isotopologues = set()
+            for iso_formula, iso_info in json_dict.items():
+                linelist_info = iso_info.get('linelist', {})
+                for dataset, files_info in linelist_info.items():
+                    if not isinstance(files_info, dict):
+                        continue
+                    if files_info.get('recommended') == True:
+                        files_meta = files_info.get('files', [])
                         nfiles = len(files_meta)
                         trans_count = 0
                         trans_urls = []
+                        states_url = None
+                        iso_slug = None
+                        current_wn_range = None
                         for j in range(nfiles):
                             file_meta = files_meta[j]
                             url = "https://www." + file_meta.get('url')
-                            if url.endswith('states.bz2'):
-                                states_url = url.replace('_v1','')
+                            filename = os.path.basename(url)
+                            inferred_iso_slug = infer_iso_slug_from_url(url, dataset)
+                            if inferred_iso_slug is not None:
+                                iso_slug = inferred_iso_slug
+                            if iso_slug is None:
+                                continue
+                            if target_isotopologue_config is not None and iso_slug not in target_isotopologue_config:
+                                continue
+                            current_wn_range = (
+                                None if target_isotopologue_config is None
+                                else get_wn_range(target_isotopologue_config[iso_slug])
+                            )
+                            if filename == strict_states_filename(iso_slug, dataset):
+                                states_url = url
                                 def_url = states_url.replace('.states.bz2','.def.json')
                                 pf_url = states_url.replace('.states.bz2','.pf')
-                            elif url.endswith('trans.bz2'):
+                            elif trans_url_in_wn_range(url, iso_slug, dataset, current_wn_range):
                                 trans_urls.append(url)
                                 trans_count += 1
-                            else:
-                                print('No line list files.')
+                        if states_url is None:
+                            if target_isotopologue_config is None or iso_slug in target_isotopologue_config:
+                                print(f'{molecules[i]} - {iso_slug or iso_formula} - {dataset}: no strict states file found.')
+                            continue
+                        found_isotopologues.add(iso_slug)
                         start = len(urls)
                         urls.extend([def_url, pf_url, states_url])
                         urls.extend(trans_urls)
-                        print(f'{molecules[i]} - {iso_formula} - {dataset}: {trans_count} trans file(s)')
+                        print(f'{molecules[i]} - {iso_slug} - {dataset}: {trans_count} trans file(s)')
                         for entry in urls[start:]:
                             print(entry)
-            missing = preferred_set - found_preferred
-            if missing:
-                print(f"Warning: isotopologues not found for {molecules[i]}: {sorted(missing)}")
+            if target_isotopologue_config is not None:
+                missing_isotopologues = [
+                    iso for iso in target_isotopologue_config
+                    if iso not in found_isotopologues
+                ]
+                for missing_isotopologue in missing_isotopologues:
+                    print(f'{molecules[i]} - {missing_isotopologue}: recommended line list not found in ExoMol API response.')
                         
     return(urls) 
 
@@ -114,8 +215,8 @@ def get_urls(molecules, preferred_isotopologues):
 # In Linux, we use command:
 # wget  -r -nH --cut-dirs=1 -P savePath -i PathOFapi__urls.txt
 # Download line list files with urls and save them into correspoding folders.
-def download_files(molecules, url_path, preferred_isotopologues):
-    urls = get_urls(molecules, preferred_isotopologues)
+def download_files(molecule_isotopologues, url_path):
+    urls = get_urls(molecule_isotopologues)
     # Save all URLs to a text file
     os.makedirs(os.path.dirname(url_path), exist_ok=True)
     with open(url_path, "w", encoding="utf-8") as fh:
@@ -126,4 +227,5 @@ def download_files(molecules, url_path, preferred_isotopologues):
     subprocess.run(command, shell=True)
     print('\nAll files have been downloaded to', file_path, 'folder!')
 
-download_files(molecules, url_path, preferred_isotopologues)
+if __name__ == '__main__':
+    download_files(molecule_isotopologues, url_path)

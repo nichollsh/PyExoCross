@@ -78,7 +78,7 @@ def exomolhr_metadata(molecule, isotopologue):
     }
 
 
-def _match_single_dataset_file(filepaths, prefix, suffix, label):
+def _match_single_dataset_file(filepaths, prefix, suffix, label, molecule=None):
     """Return the single dataset filepath and dataset label."""
     datasets = []
     for filepath in filepaths:
@@ -92,6 +92,11 @@ def _match_single_dataset_file(filepaths, prefix, suffix, label):
         return datasets[0]
     if len(datasets) == 0:
         raise FileNotFoundError(f"No ExoMolHR {label} file found.")
+    if label == 'CSV' and molecule is not None:
+        exact_name = f'{molecule}__{prefix}.csv'
+        exact_matches = [item for item in datasets if os.path.basename(item[0]) == exact_name]
+        if len(exact_matches) == 1:
+            return exact_matches[0]
     raise ValueError(f"Multiple ExoMolHR {label} files found: {[item[0] for item in datasets]}")
 
 
@@ -105,6 +110,7 @@ def resolve_exomolhr_filepaths(read_path, molecule, isotopologue):
         isotopologue,
         '.csv',
         'CSV',
+        molecule=molecule,
     )
     pf_match = _match_single_dataset_file(
         glob.glob(os.path.join(iso_path, '*.pf')),
@@ -154,7 +160,7 @@ def read_exomolhr_df(read_path, data_info, min_wn, max_wn, unc_filter):
     exomolhr_df["E'"] = cal_Ep(exomolhr_df['E"'].values, exomolhr_df['v'].values)
     exomolhr_df = exomolhr_df.reset_index(drop=True)
 
-    t.end()
+    t.end('load')
     print_file_info('Line list', meta['exomolhr_col'], meta['exomolhr_fmt'])
     print('Finished reading line list!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

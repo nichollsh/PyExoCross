@@ -28,7 +28,7 @@ from scipy.interpolate import interp1d
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Compare ExoCross opacities with reference data"
+        description="Compare ExoCross opacities with reference data (m=species, T=kelvin, P=bar)."
     )
     parser.add_argument(
         "--molecule", "-m",

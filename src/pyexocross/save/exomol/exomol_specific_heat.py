@@ -29,30 +29,34 @@ def save_exomol_specific_heat(states_df, Ntemp, Tmax):
     # Import legacy-style configuration variables from core (set via Config.to_globals()).
     from pyexocross.core import save_path, data_info 
 
-    print('Calculate specific heats.')  
+    print('\nCalculate specific heats.')  
     t = Timer()
     t.start()
     En = states_df['E'].astype('float').values
     gn = states_df['g'].astype('int').values
     Ts = np.array(range(Ntemp, Tmax+1, Ntemp)) 
     specific_heat = [cal_specific_heat(En, gn, T) for T in Ts]
-    t.end()
+    t.end('calculate')
     print('Finished calculating specific heats!\n')
 
-    print('Saving specific heats into file ...')   
+    print('Preparing specific heat output ...')
     ts = Timer()    
     ts.start() 
     specific_heat_df = pd.DataFrame()
     specific_heat_df['T'] = Ts
     specific_heat_df['Specific heat'] = specific_heat 
+    from pyexocross.base.result import record, saving_enabled
+    record('specific_heat', specific_heat_df, {'temperature': Ts},
+           {'temperature': 'K', 'data': 'J/(K mol)'})
     
-    cp_folder = save_path + 'specific_heat/'
-    ensure_dir(cp_folder)
-    cp_path = cp_folder + '__'.join(data_info[-2:]) + '.cp'
-    np.savetxt(cp_path, specific_heat_df, fmt="%8.1f %15.4f")
-    ts.end()
+    cp_path = None
+    if saving_enabled():
+        cp_folder = save_path + 'specific_heat/'
+        ensure_dir(cp_folder)
+        cp_path = cp_folder + '__'.join(data_info[-2:]) + '.cp'
+        np.savetxt(cp_path, specific_heat_df, fmt="%8.1f %15.4f")
+    ts.end('save' if cp_path else None)
     print_file_info('Specific heats', ['T', 'Specific heats'], ['%8.1f', '%15.4f'])
-    print('Specific heats file has been saved:', cp_path, '\n')  
-    print('Specific heats have been saved!\n')    
+    print('Specific heats file has been saved:', cp_path, '\n') if cp_path else print('Specific heats retained in memory.\n')
+    print('Specific heat calculation finished!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
-   

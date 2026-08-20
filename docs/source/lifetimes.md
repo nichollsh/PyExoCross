@@ -25,7 +25,7 @@ SpeciesID                               501
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol_lifetime.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol_lifetime.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -49,8 +49,8 @@ ChunkSize                               1000000
 Compress(Y/N)                           Y                         # If Y, save as .states.bz2 file; otherwise, save as .states file
 ```
 
-**Note**
+***Note***
 
 If the line lists data is not in the ExoMol format, please convert your
-data format into the ExoMol format at first and then compute lifetime with *PyExoCross*.
+data format into the ExoMol format at first and then compute lifetime with *PyExoCross*. \
 So please read [**Conversion**](`https://pyexocross.readthedocs.io/en/latest/conversion.html`) and write ``1`` after ``Conversion``, ``2`` after ``ConversionFormat`` and fill ``Conversion`` section.

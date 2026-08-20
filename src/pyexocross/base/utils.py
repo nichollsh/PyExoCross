@@ -44,6 +44,13 @@ class Timer:
         """
         self.start_CPU = time.process_time()
         self.start_sys = time.time()
+        self.start_save_CPU = 0.0
+        self.start_save_sys = 0.0
+        from pyexocross import core
+        if core.timing_active:
+            save = core.timing_summary.get('save', {})
+            self.start_save_CPU = save.get('cpu', 0.0)
+            self.start_save_sys = save.get('system', 0.0)
         return self
 
     def end(self, *args):
@@ -62,6 +69,9 @@ class Timer:
         self.end_sys = time.time()
         self.interval_CPU = self.end_CPU - self.start_CPU
         self.interval_sys = self.end_sys - self.start_sys
+        if args and isinstance(args[0], str):
+            from pyexocross.base.result import add_timing
+            add_timing(args[0], self.interval_CPU, self.interval_sys)
         print('{:25s} : {}'.format('Running time on CPU', self.interval_CPU), 's')
         print('{:25s} : {}'.format('Running time on system', self.interval_sys), 's')
         

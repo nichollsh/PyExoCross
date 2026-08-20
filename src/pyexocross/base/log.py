@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import os
 import sys
+import atexit
+import datetime
 import platform
 import subprocess
-import datetime
-import atexit
-import pandas as pd
 from tqdm import tqdm
+from contextlib import contextmanager
 from .utils import Timer, ensure_dir
 
 _ORIGINAL_STDOUT = sys.stdout
 _ORIGINAL_STDERR = sys.stderr
 _LOG_FILE_HANDLE = None
+_VERBOSE = True
 
 # Ensure print writes are flushed immediately for real-time nohup logs
 try:
@@ -102,7 +103,14 @@ def _close_log_file():
         # This prevents "Exception ignored in sys.unraisablehook" messages
         pass
 
-def setup_logging(log_file_path):
+def close_logging():
+    """
+    Close the active log file and restore original stdout/stderr streams.
+    Call this to finalize a log and allow subsequent calls to start a new log file.
+    """
+    _close_log_file()
+
+def setup_logging(log_file_path, announce=True):
     """
     Set up logging to both console and file with date suffix.
 
@@ -114,20 +122,87 @@ def setup_logging(log_file_path):
     ----------
     log_file_path : str
         Base path for the log file. A date suffix will be added to the filename.
+    announce : bool, optional
+        If True, print the final log path to the terminal. Default is True.
     """
     global _LOG_FILE_HANDLE
     log_dir = os.path.dirname(log_file_path)
     log_base = os.path.splitext(os.path.basename(log_file_path))[0]
     log_ext = os.path.splitext(log_file_path)[1] or '.log'
-    date_suffix = datetime.datetime.now().strftime('%Y%m%d')
+    now = datetime.datetime.now()
+    date_suffix = now.strftime('%Y%m%d')
     dated_name = f'{log_base}__{date_suffix}{log_ext}'
     final_log_path = os.path.join(log_dir, dated_name)
     # Always overwrite existing log for this date instead of appending
     _LOG_FILE_HANDLE = open(final_log_path, 'w', buffering=1, encoding='utf-8')
+    _LOG_FILE_HANDLE.write(f'Date and time: {now:%Y-%m-%d %H:%M:%S}\n\n')
+    _LOG_FILE_HANDLE.flush()
     sys.stdout = TeeStream(_ORIGINAL_STDOUT, _LOG_FILE_HANDLE)
     sys.stderr = TeeStream(_ORIGINAL_STDERR, _LOG_FILE_HANDLE)
     atexit.register(_close_log_file)
-    print(f'Logging to file: {final_log_path}')
+    if announce:
+        _ORIGINAL_STDOUT.write(f'Logging to file: {final_log_path}\n')
+        _ORIGINAL_STDOUT.flush()
+
+
+def normalize_verbose(value):
+    """Return a validated boolean verbosity setting."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ('true', 'yes', 'on', '1'):
+            return True
+        if normalized in ('false', 'no', 'off', '0'):
+            return False
+    raise ValueError('verbose must be True or False.')
+
+
+def parse_verbose_info(inp_filepath):
+    """Read an optional ``Verbose`` row from an input file."""
+    with open(inp_filepath, 'r', encoding='utf-8') as inp_file:
+        for line in inp_file:
+            fields = line.split()
+            if fields and fields[0].lower() == 'verbose':
+                if len(fields) < 2:
+                    raise ValueError('Verbose requires True or False.')
+                return normalize_verbose(fields[1])
+    return True
+
+
+@contextmanager
+def output_context(verbose=True):
+    """Route normal output to the terminal, log file, or neither."""
+    global _VERBOSE
+    verbose = normalize_verbose(verbose)
+    previous_verbose = _VERBOSE
+    previous_stdout = sys.stdout
+    previous_stderr = sys.stderr
+    null_stream = None
+    _VERBOSE = verbose
+    try:
+        if _LOG_FILE_HANDLE is not None:
+            sys.stdout = (
+                TeeStream(_ORIGINAL_STDOUT, _LOG_FILE_HANDLE)
+                if verbose else _LOG_FILE_HANDLE
+            )
+            sys.stderr = TeeStream(_ORIGINAL_STDERR, _LOG_FILE_HANDLE)
+        elif verbose:
+            sys.stdout = previous_stdout
+            sys.stderr = previous_stderr
+        else:
+            null_stream = open(os.devnull, 'w', encoding='utf-8')
+            sys.stdout = null_stream
+            sys.stderr = previous_stderr
+        yield
+    finally:
+        sys.stdout = previous_stdout
+        sys.stderr = previous_stderr
+        _VERBOSE = previous_verbose
+        if null_stream is not None:
+            null_stream.close()
 
 
 def _safe_cpu_model():
@@ -165,7 +240,7 @@ def get_cpu_device_info():
 def print_cpu_device_info(prefix='CPU'):
     """Print CPU/system information for logs."""
     info = get_cpu_device_info()
-    print(f"\n=== {prefix} Device Info ===")
+    print(f"=== {prefix} Device Info ===")
     print("Python:", info['python'])
     print("Platform:", info['platform'])
     print("Machine:", info['machine'])
@@ -183,24 +258,41 @@ def print_cpu_device_info(prefix='CPU'):
     except Exception:
         pass
 
+
+def normalize_logging_path(value):
+    """Normalize a log path, treating ``None`` as disabled logging."""
+    if value is None:
+        return None
+    path = str(value).strip()
+    if not path:
+        raise ValueError('LogFilePath cannot be empty.')
+    if path.lower() == 'none':
+        return None
+    return path.replace('//', '/')
+
+
 def parse_logging_info(inp_filepath):
     """
-    Parse logging path from input file before setting up logging.
+    Parse an optional logging path from an input file.
+
+    ``LogFilePath None`` disables file logging.
     This ensures all print statements (including those in inp_para) are logged.
     """
-    # Find the maximum column for all the rows.
-    with open(inp_filepath, 'r') as temp_f:
-        col_count = max([len([x for x in l.split(" ") if x.strip()]) for l in temp_f.readlines()])
-    # Generate column names  (names will be 0, 1, 2, ..., maximum columns - 1).
-    column_names = [i for i in range(col_count)] 
-    inp_df = pd.read_csv(inp_filepath, sep='\\s+', header = None, names=column_names, usecols=column_names)
-    col0 = inp_df[0]
-    
-    # File path - parse logs_path
-    logs_path_raw = inp_df[col0.isin(['LogFilePath'])][1].values[0]
-    logs_path_raw = logs_path_raw.replace('//','/').strip()
-    if logs_path_raw == '':
-        raise ValueError("LogFilePath cannot be empty.")
+    logs_path_raw = None
+    found = False
+    with open(inp_filepath, 'r', encoding='utf-8') as inp_file:
+        for line in inp_file:
+            fields = line.split()
+            if fields and fields[0] == 'LogFilePath':
+                found = True
+                if len(fields) < 2:
+                    raise ValueError('LogFilePath cannot be empty.')
+                logs_path_raw = normalize_logging_path(fields[1])
+                break
+    if not found:
+        raise ValueError('LogFilePath is required in the input file.')
+    if logs_path_raw is None:
+        return None
     log_dir = os.path.dirname(logs_path_raw)
     log_name = os.path.basename(logs_path_raw)
     if log_dir == '': 
@@ -267,8 +359,8 @@ class _ProgressLogger:
         self.log_streams = []
         if _LOG_FILE_HANDLE:
             self.log_streams.append(_LOG_FILE_HANDLE)
-        if not _ORIGINAL_STDOUT.isatty():
-            self.log_streams.append(sys.stdout)
+        if _VERBOSE and not _ORIGINAL_STDOUT.isatty():
+            self.log_streams.append(_ORIGINAL_STDOUT)
         # remove duplicates while preserving order
         seen = []
         for stream in self.log_streams:
@@ -325,6 +417,8 @@ class _ProgressLogger:
             self._print_pct(100)
 
 def log_tqdm(iterable, *args, **kwargs):
+    if not _VERBOSE and _LOG_FILE_HANDLE is None:
+        return iterable
     desc = kwargs.get('desc', '')
     total = kwargs.get('total')
     if total is None:
@@ -333,7 +427,7 @@ def log_tqdm(iterable, *args, **kwargs):
         except TypeError:
             total = None
     interactive_iterable = iterable
-    if _ORIGINAL_STDOUT.isatty():
+    if _VERBOSE and _ORIGINAL_STDOUT.isatty():
         tqdm_kwargs = dict(kwargs)
         tqdm_kwargs.setdefault('leave', False)
         tqdm_kwargs.setdefault('dynamic_ncols', True)
@@ -465,6 +559,7 @@ def print_stick_info(unc_unit, threshold_unit):
         T_list,
         Tvib_list,
         Trot_list,
+        abundance,
         wn_wl,
         wn_wl_unit,
         min_wn,
@@ -542,6 +637,7 @@ def print_stick_info(unc_unit, threshold_unit):
         print('{:25s} : {:<6} {}'.format('Rotational temperatures', str(sorted(list(set(Trot_list)))), 'K'))
     elif NLTEMethod == 'P':
         pass
+    print('{:25s} : {}'.format('Abundance', abundance))
     if wn_wl == 'WN':
         print('{:25s} : {} {} {} {} {}'.format('Wavenumber range selected', min_wn, unc_unit, '-', max_wn, unc_unit))
     elif wn_wl == 'WL' and wn_wl_unit == 'um':
@@ -596,6 +692,7 @@ def print_xsec_info(profile_label, cutoff, UncFilter, min_wnl, max_wnl,
         Tvib_list,
         Trot_list,
         P_list,
+        abundance,
         wn_wl,
         wn_wl_unit,
         min_wn,
@@ -679,6 +776,7 @@ def print_xsec_info(profile_label, cutoff, UncFilter, min_wnl, max_wnl,
     elif NLTEMethod == 'P':
         pass
     print('{:25s} : {:<6} {}'.format('Pressures', str(P_list), 'bar'))
+    print('{:25s} : {}'.format('Abundance', abundance))
     if wn_wl == 'WN':
         print('{:25s} : {} {} {} {} {}'.format('Wavenumber range selected', min_wn, unc_unit, '-', max_wn, unc_unit))
         print('{:25s} : {:<6} {}'.format('Bin size', bin_size, unc_unit))
@@ -717,26 +815,27 @@ def print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, stick_x
     """
     P_str = f', P={P} bar' if P is not None else ''
     file_path_str = f': {file_path}' if file_path is not None else ''
+    from pyexocross.core import output
+    action = 'retained in memory' if output == 'memory' else 'file saved'
     if abs_emi == 'Ab':
         if NLTEMethod == 'L' or NLTEMethod == 'P':
-            print(f'{stick_xsec_str} file saved for T={T} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for T={T} K{P_str}{file_path_str}')
         elif NLTEMethod == 'T':
-            print(f'{stick_xsec_str} file saved for Tvib={Tvib} K, Trot={Trot} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for Tvib={Tvib} K, Trot={Trot} K{P_str}{file_path_str}')
         elif NLTEMethod == 'D':
-            print(f'{stick_xsec_str} file saved for T={T} K, Trot={Trot} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for T={T} K, Trot={Trot} K{P_str}{file_path_str}')
         else:
             raise ValueError("Please choose one LTE or non-LTE method from: 'L', 'T', 'D' or 'P'.")
     elif abs_emi == 'Em':
         if NLTEMethod == 'L':
-            print(f'{stick_xsec_str} file saved for T={T} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for T={T} K{P_str}{file_path_str}')
         elif NLTEMethod == 'T':
-            print(f'{stick_xsec_str} file saved for Tvib={Tvib} K, Trot={Trot} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for Tvib={Tvib} K, Trot={Trot} K{P_str}{file_path_str}')
         elif NLTEMethod == 'D':
-            print(f'{stick_xsec_str} file saved for Trot={Trot} K{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action} for Trot={Trot} K{P_str}{file_path_str}')
         elif NLTEMethod == 'P':
-            print(f'{stick_xsec_str} file saved{P_str}{file_path_str}')
+            print(f'{stick_xsec_str} {action}{P_str}{file_path_str}')
         else:
             raise ValueError("Please choose one LTE or non-LTE method from: 'L', 'T', 'D' or 'P'.")
     else:
         raise ValueError("Please choose one from: 'Absorption' or 'Emission'.")
-    

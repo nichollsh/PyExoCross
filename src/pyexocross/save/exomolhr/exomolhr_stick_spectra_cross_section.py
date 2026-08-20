@@ -75,6 +75,7 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
         max_wnl,
         database,
         PlotStickSpectraYN,
+        output,
         threshold,
         wn_wl,
         wn_wl_unit,
@@ -88,7 +89,8 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
         ncputrans,
     )
 
-    print('Calculate stick spectra and cross sections (read once, calculate both together).\n')
+    print('\nCalculate stick spectra and cross sections (read once, calculate both together).\n')
+    calculation_timer = Timer().start()
     t_ss = Timer()
     t_xsec = Timer()
 
@@ -150,7 +152,7 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
     broad, ratio, _, _ = read_broad(read_path)
 
     # ---- Print info ----
-    print('Calculate stick spectra and cross sections together.')
+    print('\nCalculate stick spectra and cross sections together.')
     print_stick_info('cm⁻¹', 'cm/molecule')
     print_xsec_info(profile_label, cutoff, UncFilter, min_wnl, max_wnl,
                     'cm⁻¹', 'cm⁻¹/(molecule cm⁻²)', broad, ratio)
@@ -211,7 +213,7 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
             stick_spectra_df = stick_spectra_results.pop(temp_idx)
             T, Tvib, Trot = get_temp_vals(temp_idx, NLTEMethod, T_list, Tvib_list, Trot_list)
             
-            if PlotStickSpectraYN == 'Y':
+            if PlotStickSpectraYN == 'Y' and output != 'memory':
                 plot_stick_spectra(stick_spectra_df, T=T, Tvib=Tvib, Trot=Trot)
 
             # Unit conversion for saving
@@ -226,14 +228,28 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
             else:
                 raise ValueError('Please wirte the unit of wavelength in the input file: um or nm.')
             stick_spectra_df.sort_values(by=['v'], ascending=True, inplace=True)
-
-            ss_path = stick_spectra_filepath(
-                ss_folder, T, Tvib, Trot, str_min_wnl, str_max_wnl, unit_fn,
-                data_info, wn_wl, UncFilter, threshold, database, abs_emi,
-                LTE_NLTE, photo, NLTEMethod,
+            from pyexocross.base.result import Condition, record, saving_enabled
+            axis = 'wavenumber' if wn_wl == 'WN' else 'wavelength'
+            record(
+                'stick_spectra',
+                stick_spectra_df,
+                {axis: stick_spectra_df['v'].to_numpy()},
+                {axis: 'cm-1' if wn_wl == 'WN' else wn_wl_unit,
+                 'data': 'cm/molecule'},
+                Condition(T, None, Tvib, Trot),
             )
-            save_large_txt(ss_path, stick_spectra_df, fmt=ss_fmt)
-            ss_file_count += 1
+
+            ss_path = None
+            if saving_enabled():
+                ss_path = stick_spectra_filepath(
+                    ss_folder, T, Tvib, Trot, str_min_wnl, str_max_wnl,
+                    unit_fn, data_info, wn_wl, UncFilter, threshold, database,
+                    abs_emi, LTE_NLTE, photo, NLTEMethod,
+                )
+                save_timer = Timer().start()
+                save_large_txt(ss_path, stick_spectra_df, fmt=ss_fmt)
+                save_timer.end('save')
+                ss_file_count += 1
             print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, None, abs_emi, NLTEMethod,
                                           'Stick spectra', ss_path)
             ss_col = list(stick_spectra_df.columns)
@@ -248,7 +264,7 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
             ss_col_list = ['Wavelength'] + ss_col[1:]
             ss_fmt_list = ['%15.8E'] + ss_fmt.split()[1:]
         print_file_info('Stick spectra', ss_col_list, ss_fmt_list)
-        print(f'\nAll {ss_file_count} stick spectra files have been saved!\n')
+        print(f'\nAll {ss_file_count} stick spectra files have been saved!\n') if saving_enabled() else print(f'\nAll {n_temps} stick spectra results retained in memory!\n')
         print('* * * * * - - - - - * * * * * - - - * * * * * - - - - - * * * * *\n')
     else:
         print(f'Warning: No transitions found for any temperature. Skipping stick spectra.')
@@ -297,10 +313,12 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
             print_file_info('Cross sections', ['Wavenumber', 'Cross section'], ['%15.6f', '%15.8E'])
         else:
             print_file_info('Cross sections', ['Wavelength', 'Cross section'], ['%15.8E', '%15.8E'])
-        print(f'\nAll {xsec_file_count} cross sections files have been saved!\n')
+        print(f'\nAll {xsec_file_count} cross sections files have been saved!\n') if saving_enabled() else print(f'\nAll {xsec_file_count} cross section results retained in memory!\n')
 
     if not any_results_ss and not any_results_xsec:
         raise ValueError("Empty result with the input filter values. Please type new filter values in the input file.")
 
+    from pyexocross.base.result import end_calculation
+    end_calculation(calculation_timer)
     print('Finished calculating stick spectra and cross sections!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

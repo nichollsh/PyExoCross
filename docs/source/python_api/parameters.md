@@ -10,9 +10,9 @@ by PyExoCross API functions.  Parameters are organized by category.
 | Parameter | Type | Default | Description | Databases |
 |---|---|---|---|---|
 | `database` | `str` | `'ExoMol'` | Database type | All |
-| `molecule` | `str` | `None` | Molecule name (e.g. `'H2O'`, `'MgH'`, `'NO'`) | ExoMol, HITRAN, HITEMP |
+| `molecule` | `str` | `None` | Molecule name (e.g. `'H2O'`, `'MgH'`, `'NO'`) | ExoMol, ExoMolHR, HITRAN, HITEMP |
 | `atom` | `str` | `None` | Atom name (e.g. `'Ar'`, `'Li'`, `'Al'`) | ExoAtom |
-| `isotopologue` | `str` | `None` | Isotopologue (e.g. `'1H2-16O'`, `'24Mg-1H'`) | ExoMol, HITRAN, HITEMP |
+| `isotopologue` | `str` | `None` | Isotopologue (e.g. `'1H2-16O'`, `'24Mg-1H'`) | ExoMol, ExoMolHR, HITRAN, HITEMP |
 | `dataset` | `str` | `None` | Dataset name (e.g. `'POKAZATEL'`, `'XAB'`, `'NIST'`) | All |
 | `species_id` | `int` | `0` | Numeric species identifier | All |
 
@@ -20,7 +20,8 @@ by PyExoCross API functions.  Parameters are organized by category.
 
 | Value | Description |
 |---|---|
-| `'ExoMol'` | ExoMol molecular database (default) |
+| `'ExoMol'` | ExoMol molecular database |
+| `'ExoMolHR'` | ExoMolHR molecular database |
 | `'ExoAtom'` | ExoAtom atomic database |
 | `'HITRAN'` | HITRAN molecular spectroscopic database |
 | `'HITEMP'` | HITEMP high-temperature extension of HITRAN |
@@ -37,6 +38,7 @@ species_id = species_main_id * 10 + species_sub_id
 | Database | Example | `species_id` | Main ID | Sub ID | Meaning |
 |---|---|---|---|---|---|
 | ExoMol | MgH (24Mg-1H) | `501` | `50` | `1` | HITRAN molecule ID #50, isotopologue ID #1 |
+| ExoMolHR | MgH (24Mg-1H) | `501` | `50` | `1` | HITRAN molecule ID #50, isotopologue ID #1 |
 | ExoAtom | Ar | `601` | `60` | `1` | HITRAN atom ID #60, isotope ID #1 |
 | HITRAN | H2O (1H2-16O) | `11` | `1` | `1` | HITRAN molecule ID #1, isotopologue ID #1 |
 | HITRAN | CO2 (12C-16O2) | `21` | `2` | `1` | HITRAN molecule ID #2, isotopologue ID #1 |
@@ -51,21 +53,36 @@ species_id = species_main_id * 10 + species_sub_id
 |---|---|---|---|
 | `read_path` | `str` | `'./'` | Path to input data |
 | `save_path` | `str` | `'./output/'` | Path for output files |
-| `logs_path` | `str` | `None` | Log file path; `None` to skip logging |
+| `logs_path` | `str` or `None` | `None` | API log file path; `None` skips automatic file logging |
+| `log` | `'auto'`, `'file'`, or `'none'` | `'auto'` | File-logging mode; `'file'` requires a valid path and `'none'` disables logging |
+| `verbose` | `bool` | `True` | Show normal terminal output and progress bars; `False` keeps the terminal quiet |
+
+For `.inp` workflows, `LogFilePath None` is equivalent to omitting
+`logs_path` in an API call. `verbose` and file logging are independent, so
+`verbose=False` can still write a log when a valid path is configured.
+Calculations that receive `data` from `px.load()` inherit its `verbose` value
+unless the calculation call explicitly overrides it.
 
 ### `read_path` Conventions
 
 | Database | `read_path` Format | Example |
 |---|---|---|
-| ExoMol  | Root directory of ExoMol database  | `'/data/ExoMol/'`  |
-| ExoAtom | Root directory of ExoAtom database | `'/data/ExoAtom/'` |
-| HITRAN  | Root directory of HITRAN database  | `'/data/HITRAN/'`  |
-| HITEMP  | Root directory of HITEMP database  | `'/data/HITEMP/'`  |
+| ExoMol   | Root directory of ExoMol database   | `'/data/ExoMol/'`   |
+| ExoMolHR | Root directory of ExoMolHR database | `'/data/ExoMolHR/'` |
+| ExoAtom  | Root directory of ExoAtom database  | `'/data/ExoAtom/'`  |
+| HITRAN   | Root directory of HITRAN database   | `'/data/HITRAN/'`   |
+| HITEMP   | Root directory of HITEMP database   | `'/data/HITEMP/'`   |
 
-For ExoMol, the code automatically resolves the full path as:
+For ExoMol:
 
 ```
 {read_path}/{molecule}/{isotopologue}/{dataset}/
+```
+
+For ExoMolHR, this folder should contain only one .csv file:
+
+```
+{read_path}/{molecule}/{isotopologue}/
 ```
 
 For ExoAtom:
@@ -89,14 +106,24 @@ For HITRAN/HITEMP:
 | `ncputrans`  | `int` | `4` | Number of CPU cores for processing each transitions file |
 | `ncpufiles`  | `int` | `1` | Number of transitions files processed simultaneously |
 | `chunk_size` | `int` | `100000` | Chunk size when reading/calculating transitions |
-| `run_mode` | `str` | `'CPU'` | Compute backend mode: `'CPU'` (default) or `'GPU'` |
-| `gpu_backend` | `str` | `'AUTO'` | GPU backend policy when `run_mode='GPU'`: `'AUTO'`, `'CUDA'`, `'PyTorch-CUDA'`, `'CuPy-CUDA'`, or `'MPS'` |
+| `device` or `run_mode` | `str` | `'CPU'` | Compute backend mode: `'CPU'` or `'GPU'` |
+| `gpu_backend` | `str` | `'AUTO'` | GPU backend policy when `device='GPU'`: `'AUTO'`, `'CUDA'`, `'PyTorch-CUDA'`, `'CuPy-CUDA'`, or `'MPS'` |
 | `gpu_batch_lines` | `int` | `8192` | Max number of lines per GPU batch (memory-control knob) |
 | `gpu_batch_grid` | `int` | `256` | Max number of grid points per GPU batch (memory-control knob) |
+| `cache` | `str` | `'auto'` | Transition cache: small inputs use memory and large inputs use Parquet; alternatives are `'parquet'` and `'none'` |
+| `cache_dir` | `str` or `None` | `None` | Cache directory; `None` uses a source-adjacent `.pyexocross_cache/` directory |
+| `max_memory` | `int` | `512` | Maximum transition data retained by `cache='auto'`, in MB; internally converted with `1024**2` bytes per MB |
+| `refresh` | `bool` | `False` | Rebuild matching Parquet cache files |
+| `all_transitions` | `bool` | `False` | `px.load` only: eagerly load every transition file; whole-list functions expand automatically when needed |
 
 GPU acceleration scope:
 - Enabled for `cooling_functions`, `stick_spectra`, `cross_sections`, and `stick_spectra_cross_section`
 - Other functions are CPU formula based
+
+Parquet caches are shared by CPU and GPU modes. PyArrow currently reads and
+decodes Parquet on the CPU, and the selected arrays are then transferred to the
+GPU. GPU mode accelerates supported numerical kernels; it does not currently
+accelerate file I/O or Parquet decoding.
 
 `gpu_backend` behavior:
 - `'AUTO'` (recommended): `PyTorch-CUDA -> CuPy-CUDA -> MPS -> CPU fallback`
@@ -109,36 +136,34 @@ Typical usage:
 
 ```python
 # CPU (default)
-run_mode='CPU'
+device='CPU'
 
 # GPU (auto backend)
-run_mode='GPU'
+device='GPU'
 gpu_backend='AUTO'
 gpu_batch_lines=8192
 gpu_batch_grid=256
 
 # GPU (auto CUDA provider priority: PyTorch first, then CuPy)
-run_mode='GPU'
+device='GPU'
 gpu_backend='CUDA'
 
 # GPU (force PyTorch CUDA only)
-run_mode='GPU'
+device='GPU'
 gpu_backend='PyTorch-CUDA'
 
 # GPU (force CuPy CUDA only)
-run_mode='GPU'
+device='GPU'
 gpu_backend='CuPy-CUDA'
 
 # GPU (force MPS)
-run_mode='GPU'
+device='GPU'
 gpu_backend='MPS'
 ```
 
-:::{tip}
 For large line lists (e.g. H2O with billions of lines), increase `chunk_size`
 to reduce I/O overhead.  Set `ncpufiles > 1` if the species has many
 separate `.trans` files (common for ExoMol).
-:::
 
 ---
 
@@ -163,6 +188,12 @@ Used by `px.conversion()`.
 The global and local quantum number format strings follow HITRAN2004 convention.
 Each format field is a C/Fortran-style specifier:
 
+For ExoMol, ExoMolHR, and ExoAtom input, `global_qn_format_list` and `local_qn_format_list`
+can be omitted when all requested labels are available in the definition
+metadata. Metadata namespaces are shortened before matching, so labels such as
+`Herzberg:n1` are requested as `n1`. \
+
+
 ```python
 global_qn_label_list  = ['ElecState', 'v', 'Omega']
 global_qn_format_list = ['%9s', '%2d', '%4s']    # Total: 15 chars
@@ -171,10 +202,8 @@ local_qn_label_list   = ['J', 'e/f']
 local_qn_format_list  = ['%5.1f', '%2s']         # Total: 15 chars (padded)
 ```
 
-:::{important}
 For HITRAN2004 format, both global and local quantum number fields are
 **exactly 15 characters** each.  Ensure the sum of format widths matches.
-:::
 
 ---
 
@@ -224,6 +253,14 @@ Used by `px.stick_spectra()`, `px.cross_sections()`, and `px.stick_spectra_cross
 | `min_range` | `float` | `0` | Minimum of range (in `wn_wl_unit`) |
 | `max_range` | `float` | `30000` | Maximum of range (in `wn_wl_unit`) |
 | `abs_emi` | `str` | `'Ab'` | `'Ab'` = absorption, `'Em'` = emission |
+| `abundance` | `float` | `1.0` | Optional isotopic abundance multiplier |
+
+***Note***
+
+`wn_wl` and `wn_wl_unit` define the calculation and saved-output coordinate, not just labels. \
+With `wn_wl='WN'`, saved `.stick` and `.xsec` files use wavenumber as the first column. \
+With `wn_wl='WL'`, saved files use wavelength as the first column in `wn_wl_unit`. \
+Plotting parameters can use a different coordinate and only affect figure x-axes.
 
 ---
 
@@ -287,22 +324,32 @@ qns_filter = {
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `qnslabel_list` | `list[str]` | `[]` | Quantum number column labels |
-| `qnsformat_list` | `list[str]` | `[]` | Quantum number format specifiers |
+| `qnslabel_list` | `list[str]` | `[]` | Optional quantum number label |
+| `qnsformat_list` | `list[str]` | `[]` | Optional quantum number format |
 
-The labels and formats must correspond to the columns in the `.states` file
-**after** the standard columns (ID, energy, degeneracy, lifetime).
+For ExoMol and ExoAtom input, the labels and formats are read from the
+definition metadata (`.def.json`, `.def`, or `.adef.json`) by default. \
+For ExoMolHR input, the labels and formats are read from the
+default metadata automatically.\
+Namespace prefixes are removed, for example `Herzberg:n1` becomes `n1` and
+`qn:configuration` becomes `configuration`. Optional state columns such as
+uncertainty, lifetime, and oscillator strength are not added to the automatic
+quantum number list.
+
+Provide `qnslabel_list` and `qnsformat_list` only for custom/legacy files or
+when you need to override the metadata. In that case, the labels and formats
+must correspond to the quantum number columns in the `.states` file.
 
 **ExoMolHR** No need.
 
-**ExoMol Example** (MgH XAB):
+**ExoMol override example** (MgH XAB):
 
 ```python
 qnslabel_list  = ['+/-', 'e/f', 'ElecState', 'v', 'Lambda', 'Sigma', 'Omega']
 qnsformat_list = ['%1s', '%1s', '%12s', '%3d', '%3d', '%5.1f', '%5.1f']
 ```
 
-**ExoAtom Example** (Ar NIST):
+**ExoAtom override example** (Ar NIST):
 
 ```python
 qnslabel_list  = ['configuration', 'Multiple', 'parity']
@@ -338,14 +385,28 @@ Used by `px.cross_sections()`.
 |---|---|---|---|
 | `broadeners` | `list[str]` | `['Default']` | Broadening species (e.g. `['H2', 'He']`) |
 | `ratios` | `list[float]` | `[1.0]` | Mixing ratios (must sum to 1.0) |
-| `alpha_hwhm` | `float` or `None` | `3.0` | Constant Doppler HWHM (cm⁻¹); `None` to auto-calculate |
+| `alpha_hwhm` | `float` or `None` | `None` | Constant Doppler HWHM (cm⁻¹); `None` to auto-calculate |
 | `gamma_hwhm` | `float` or `None` | `None` | Constant Lorentzian HWHM (cm⁻¹); `None` to auto-calculate |
 
-:::{tip}
 Set `alpha_hwhm=None` and `gamma_hwhm=None` to let PyExoCross calculate
 HWHMs from broadening parameters in the database.  Use constant values for
 quick testing or when database broadening files are unavailable.
-:::
+
+For HITRAN and HITEMP, `Default` uses air broadening (`gamma_air`), consistent with the standard HAPI convention (`GammaL='gamma_air'`). 
+
+For standard HITRAN air-broadened calculations, use:
+
+```python
+broadeners=['Air'],
+ratios=[1.0],
+```
+
+To mix air and self broadening, use for example:
+
+```python
+broadeners=['Air', 'Self'],
+ratios=[0.7, 0.3],
+```
 
 ---
 
@@ -358,10 +419,13 @@ Used by `px.cross_sections()`.
 | `bin_size` | `float` | `0.1` | Bin size in `wn_wl_unit` (mutually exclusive with `n_point`) |
 | `n_point` | `int` | `None` | Number of grid points (mutually exclusive with `bin_size`) |
 
-:::{note}
-If both `bin_size` and `n_point` are specified, `n_point` takes precedence
-and `bin_size` is calculated from the range.
-:::
+***Note***
+
+If both `bin_size` and `n_point` are specified, `n_point` takes precedence and `bin_size` is calculated from the range. \
+For wavelength calculations, `bin_size` is a wavelength interval. \
+For example, `wn_wl='WL'`, `wn_wl_unit='nm'`, and `bin_size=0.01` means a 0.01 nm grid
+spacing. \
+`cutoff`, `alpha_hwhm`, and `gamma_hwhm` remain in cm⁻¹ because line profiles are evaluated in wavenumber space internally.
 
 ---
 
@@ -377,8 +441,8 @@ Used by `px.oscillator_strengths()`, `px.stick_spectra()`, `px.cross_sections()`
 | `plot_unit` | `str` | `'cm-1'` | X-axis unit: `'cm-1'`, `'um'`, or `'nm'` |
 | `limit_yaxis` | `float` | `1e-30` | Lower limit for y-axis |
 
-:::{note}
-These are **convenience** kwargs that get remapped internally to
-function-specific names.  For example, `plot=True` in
+***Note***
+
+These are **convenience** kwargs that get remapped internally to function-specific names. \
+For example, `plot=True` in
 `px.cross_sections()` becomes `plot_cross_section=True`.
-:::

@@ -140,28 +140,28 @@ def process_hitran_cross_section_chunk(hitran_linelist_df, T, P, Q, profile_labe
             elif profile_label == 'Thompson pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
                 gamma = LorentzianHWHM_gamma(num, gamma_HWHM, 0, [], n_air, gamma_air, gamma_self, [], T, P)
-                eta = PseudoThompsonVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)       
+                hV, eta = PseudoThompsonVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Kielkopf pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
                 gamma = LorentzianHWHM_gamma(num, gamma_HWHM, 0, [], n_air, gamma_air, gamma_self, [], T, P)
-                eta = PseudoKielkopfVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)       
+                hV, eta = PseudoKielkopfVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Olivero pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
                 gamma = LorentzianHWHM_gamma(num, gamma_HWHM, 0, [], n_air, gamma_air, gamma_self, [], T, P)
-                eta = PseudoOliveroVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)       
+                hV, eta = PseudoOliveroVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Liu-Lin pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
                 gamma = LorentzianHWHM_gamma(num, gamma_HWHM, 0, [], n_air, gamma_air, gamma_self, [], T, P)
-                eta = PseudoLiuLinVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)       
+                hV, eta = PseudoLiuLinVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Rocco pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
                 gamma = LorentzianHWHM_gamma(num, gamma_HWHM, 0, [], n_air, gamma_air, gamma_self, [], T, P)
-                eta = PseudoRoccoVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff) 
+                hV, eta = PseudoRoccoVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Binned Doppler':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
                 xsec = cross_section_BinnedGaussian(wn_grid, v, alpha, coef, cutoff)        
@@ -217,7 +217,7 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
         wn_wl,
     )
 
-    print('Calculating cross sections ...')  
+    print('\nCalculate cross sections.')  
     t = Timer()
     t.start()
 
@@ -253,7 +253,7 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
     print_xsec_info(profile_label, cutoff, UncFilter, min_wnl, max_wnl, 
                     'cm⁻¹', 'cm⁻¹/(molecule cm⁻²)', [], [])
     
-    print('Calculating cross sections ...')    
+    print('\nCalculate cross sections.')    
     
     # Process each (T, P) combination separately to save memory
     any_results = False
@@ -366,7 +366,8 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
                 except Exception as e:
                     print(f'Error processing T={T} K: {e}')
     
-    t.end()  
+    from pyexocross.base.result import end_calculation
+    end_calculation(t)
     print('\nFinished calculating cross sections!\n')
     
     if not any_results:
@@ -375,5 +376,9 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
         print_file_info('Cross sections', ['Wavenumber', 'Cross section'], ['%15.6f', '%15.8E'])
     else:
         print_file_info('Cross sections', ['Wavelength', 'Cross section'], ['%15.8E', '%15.8E'])
-    print(f'All {xsec_file_count} cross sections files have been saved!\n')
+    from pyexocross.base.result import saving_enabled
+    if saving_enabled():
+        print(f'All {xsec_file_count} cross sections files have been saved!\n')
+    else:
+        print(f'All {xsec_file_count} cross section results retained in memory!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

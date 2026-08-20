@@ -13,8 +13,10 @@ import pandas as pd
 from tabulate import tabulate
 
 from pyexocross.base.input import inp_para, parse_TP_values
+from pyexocross.base.log import normalize_verbose, parse_verbose_info
 from pyexocross.base.utils import ensure_dir
 from pyexocross.base.constants import *
+from pyexocross.base.qn_metadata import qn_formats_for_labels
 
 class Config:
     """
@@ -40,6 +42,7 @@ class Config:
         """
         if inp_filepath is not None:
             self._load_from_file(inp_filepath, force_reload=force_reload)
+            self.output = 'files'
         
         # Always call _load_from_kwargs to handle overrides and defaults.
         # If inp_filepath was provided, kwargs will override file values.
@@ -57,9 +60,18 @@ class Config:
         from pyexocross.base.config_manager import ConfigManager
         params = ConfigManager.get_config(inp_filepath, force_reload=force_reload)
         self._set_attributes(params)
+        self.verbose = parse_verbose_info(inp_filepath)
     
     def _load_from_kwargs(self, **kwargs):
         """Load configuration from keyword arguments with defaults."""
+        if 'abundance' in kwargs:
+            self._api_abundance = float(kwargs['abundance'])
+        elif not hasattr(self, '_api_abundance'):
+            self._api_abundance = 1.0
+        if not np.isfinite(self._api_abundance) or self._api_abundance < 0:
+            raise ValueError('abundance must be a finite non-negative number.')
+        self.abundance = self._api_abundance
+
         # Database info
         self.database = kwargs.get('database', getattr(self, 'database', 'ExoMol'))
         self.molecule = kwargs.get('molecule', getattr(self, 'molecule', None))
@@ -72,12 +84,29 @@ class Config:
         self.read_path = kwargs.get('read_path', getattr(self, 'read_path', './'))
         self.save_path = kwargs.get('save_path', getattr(self, 'save_path', './output/'))
         self.logs_path = kwargs.get('logs_path', getattr(self, 'logs_path', './pyexocross.log'))
+        self.verbose = normalize_verbose(
+            kwargs.get('verbose', getattr(self, 'verbose', True))
+        )
+        self.output = str(kwargs.get('output', getattr(self, 'output', 'files'))).lower()
+        if self.output not in ('files', 'memory', 'both'):
+            raise ValueError("output must be 'files', 'memory', or 'both'.")
+        self.cache = str(kwargs.get('cache', getattr(self, 'cache', 'auto'))).strip().lower()
+        if self.cache not in ('auto', 'parquet', 'none'):
+            raise ValueError("cache must be 'auto', 'parquet', or 'none'.")
+        self.cache_dir = kwargs.get('cache_dir', getattr(self, 'cache_dir', None))
+        self.max_memory = int(kwargs.get('max_memory', getattr(self, 'max_memory', 512)))
+        self.refresh_cache = bool(kwargs.get('refresh', kwargs.get(
+            'refresh_cache', getattr(self, 'refresh_cache', False)
+        )))
+        if self.max_memory < 0:
+            raise ValueError('max_memory must be zero or a positive number of MB.')
         
         # Ensure directories exist
         ensure_dir(self.save_path)
-        log_dir = os.path.dirname(self.logs_path)
-        if log_dir:
-            ensure_dir(log_dir + '/')
+        if self.logs_path:
+            log_dir = os.path.dirname(self.logs_path)
+            if log_dir:
+                ensure_dir(log_dir + '/')
         
         # Function flags
         self.conversion = kwargs.get('conversion', getattr(self, 'conversion', 0))
@@ -104,7 +133,12 @@ class Config:
         self.ncpufiles = kwargs.get('ncpufiles', getattr(self, 'ncpufiles', 1))
         self.chunk_size = kwargs.get('chunk_size', getattr(self, 'chunk_size', 100000))
         from pyexocross.gpu.base_gpu import normalize_run_mode, normalize_gpu_backend
-        self.run_mode = normalize_run_mode(kwargs.get('run_mode', getattr(self, 'run_mode', 'CPU')))
+        if 'device' in kwargs and 'run_mode' in kwargs:
+            if normalize_run_mode(kwargs['device']) != normalize_run_mode(kwargs['run_mode']):
+                raise ValueError('device and run_mode must request the same CPU/GPU mode.')
+        mode = kwargs.get('device', kwargs.get('run_mode', getattr(self, 'run_mode', 'CPU')))
+        self.run_mode = normalize_run_mode(mode)
+        self.device = self.run_mode
         self.gpu_backend = normalize_gpu_backend(kwargs.get('gpu_backend', getattr(self, 'gpu_backend', 'CUDA')))
         self.gpu_batch_lines = int(kwargs.get('gpu_batch_lines', getattr(self, 'gpu_batch_lines', 8192)))
         self.gpu_batch_grid = int(kwargs.get('gpu_batch_grid', getattr(self, 'gpu_batch_grid', 256)))
@@ -125,14 +159,29 @@ class Config:
             self.P_list = [1.0]
         
         # Wavenumber/wavelength settings
-        self.wn_wl = kwargs.get('wn_wl', getattr(self, 'wn_wl', 'WN'))
-        self.wn_wl_unit = kwargs.get('wn_wl_unit', getattr(self, 'wn_wl_unit', 'cm-1'))
+        self.wn_wl = kwargs.get('wn_wl', getattr(self, 'wn_wl', 'WN')).upper()
+        self.wn_wl_unit = kwargs.get('wn_wl_unit', getattr(self, 'wn_wl_unit', 'cm-1')).lower().replace('cm^-1', 'cm-1')
         
         min_range = kwargs.get('min_range', getattr(self, 'min_wnl', 0))
         max_range = kwargs.get('max_range', getattr(self, 'max_wnl', 30000))
         
-        self.min_wn = min_range if self.wn_wl == 'WN' else 1e4/max_range if self.wn_wl_unit == 'um' else 1e7/max_range
-        self.max_wn = max_range if self.wn_wl == 'WN' else 1e4/min_range if self.wn_wl_unit == 'um' else 1e7/min_range
+        if self.wn_wl == 'WN':
+            self.min_wn = min_range
+            self.max_wn = max_range
+        elif self.wn_wl == 'WL':
+            if min_range <= 0 or max_range <= 0:
+                raise ValueError("Wavelength range values must be greater than 0.")
+            if self.wn_wl_unit == 'um':
+                unit_change = 1e4
+            elif self.wn_wl_unit == 'nm':
+                unit_change = 1e7
+            else:
+                raise ValueError("Please give the unit of wavelength as 'um' or 'nm'.")
+            wl_bounds_as_wn = [unit_change / min_range, unit_change / max_range]
+            self.min_wn = min(wl_bounds_as_wn)
+            self.max_wn = max(wl_bounds_as_wn)
+        else:
+            raise ValueError("Please choose wavenumber or wavelength with wn_wl='WN' or wn_wl='WL'.")
         self.min_wnl = min_range
         self.max_wnl = max_range
         
@@ -144,16 +193,19 @@ class Config:
         
         if _n_point is not None:
             self.N_point = int(_n_point)
-            self.bin_size = (self.max_wn - self.min_wn) / max(self.N_point - 1, 1)
+            self.bin_size = abs(max_range - min_range) / max(self.N_point - 1, 1)
         elif _bin_size is not None:
-            bs = _bin_size if self.wn_wl == 'WN' else (_bin_size * 1e-4 if self.wn_wl_unit == 'um' else _bin_size * 1e-7)
-            self.bin_size = bs
-            self.N_point = int((self.max_wn - self.min_wn) / self.bin_size) + 1
+            self.bin_size = float(_bin_size)
+            self.N_point = int(abs(max_range - min_range) / self.bin_size) + 1
         elif not hasattr(self, 'N_point') or not hasattr(self, 'bin_size'):
-            # Default: bin_size = 0.1 cm-1
+            # Default bin size is in the selected WnWlUnit.
             self.bin_size = 0.1
-            self.N_point = int((self.max_wn - self.min_wn) / self.bin_size) + 1
-        self.wn_grid = np.linspace(self.min_wn, self.max_wn, self.N_point)
+            self.N_point = int(abs(max_range - min_range) / self.bin_size) + 1
+        if self.wn_wl == 'WN':
+            self.wn_grid = np.linspace(self.min_wn, self.max_wn, self.N_point)
+        else:
+            wl_grid = np.linspace(min_range, max_range, self.N_point)
+            self.wn_grid = np.sort(unit_change / wl_grid)
         
         # Filters (None = disabled, float/int value = enabled)
         current_threshold = getattr(self, 'threshold', 'None')
@@ -217,6 +269,27 @@ class Config:
         # Set defaults for other parameters
         self._set_defaults(**kwargs)
         
+        # Automatic QN aliasing for Class 1 HITRAN/HITEMP molecules to avoid 'v' collision
+        if self.database in ('HITRAN', 'HITEMP'):
+            class1_molecules = ['CO','HF','HCl','HBr','HI','N2','NO+','NO_p','H2','CS', 'O2','NO','OH','ClO','SO','S2']
+            if self.molecule in class1_molecules:
+                if hasattr(self, 'global_qn_label_list'):
+                    self.global_qn_label_list = ['v1' if x == 'v' else x for x in self.global_qn_label_list]
+                if hasattr(self, 'qnslabel_list'):
+                    self.qnslabel_list = ['v1' if x == 'v' else x for x in self.qnslabel_list]
+                if hasattr(self, 'qns_label'):
+                    self.qns_label = ['v1' if x == 'v' else x for x in self.qns_label]
+                if hasattr(self, 'qns_filter') and isinstance(self.qns_filter, list):
+                    new_qns_filter = []
+                    for qf in self.qns_filter:
+                        if qf.startswith('v['):
+                            new_qns_filter.append('v1[' + qf[2:])
+                        elif qf == 'v':
+                            new_qns_filter.append('v1')
+                        else:
+                            new_qns_filter.append(qf)
+                    self.qns_filter = new_qns_filter
+        
         # Resolve database-specific metadata from definition files
         self._resolve_metadata()
         
@@ -268,7 +341,7 @@ class Config:
         # Conversion defaults
         self.conversion_format = kwargs.get('conversion_format', getattr(self, 'conversion_format', 'None'))
         self.conversion_min_freq = kwargs.get('conversion_min_freq', getattr(self, 'conversion_min_freq', 0))
-        self.conversion_max_freq = kwargs.get('conversion_max_freq', getattr(self, 'conversion_max_freq', 30000))
+        self.conversion_max_freq = kwargs.get('conversion_max_freq', getattr(self, 'conversion_max_freq', 1e10))
         
         curr_conv_unc = getattr(self, 'conversion_unc', 'None')
         _conv_unc = kwargs.get('conversion_unc', curr_conv_unc if curr_conv_unc != 'None' else None)
@@ -337,7 +410,7 @@ class Config:
         # else: use existing self.qns_filter from file
 
         # Doppler HWHM
-        _alpha = kwargs.get('alpha_hwhm', getattr(self, 'alpha_hwhm', 3.0))
+        _alpha = kwargs.get('alpha_hwhm', getattr(self, 'alpha_hwhm', None))
         # Prioritize doppler_hwhm_yn if explicitly passed, else check alpha value
         if kwargs.get('doppler_hwhm_yn') is not None:
             self.doppler_hwhm_yn = kwargs['doppler_hwhm_yn']
@@ -353,7 +426,7 @@ class Config:
             self.alpha_hwhm = float(_alpha)
         
         # Lorentzian HWHM
-        _gamma = kwargs.get('gamma_hwhm', getattr(self, 'gamma_hwhm', 0.5))
+        _gamma = kwargs.get('gamma_hwhm', getattr(self, 'gamma_hwhm', None))
         if kwargs.get('lorentzian_hwhm_yn') is not None:
             self.lorentzian_hwhm_yn = kwargs['lorentzian_hwhm_yn']
             self.gamma_hwhm = float(_gamma) if _gamma is not None else 0.5
@@ -385,11 +458,10 @@ class Config:
         
         # Plotting defaults
         # Oscillator Strength
-        _plot_os_yn = kwargs.get('plot_oscillator_strength_yn', getattr(self, 'plot_oscillator_strength_yn', None))
-        if _plot_os_yn is not None:
-            self.plot_oscillator_strength_yn = _plot_os_yn
-        elif 'plot_oscillator_strength' in kwargs:
+        if 'plot_oscillator_strength' in kwargs:
             self.plot_oscillator_strength_yn = 'Y' if kwargs['plot_oscillator_strength'] else 'N'
+        elif 'plot_oscillator_strength_yn' in kwargs:
+            self.plot_oscillator_strength_yn = kwargs['plot_oscillator_strength_yn']
         elif not hasattr(self, 'plot_oscillator_strength_yn'):
             self.plot_oscillator_strength_yn = 'N'
 
@@ -399,11 +471,10 @@ class Config:
         self.limit_yaxis_os = kwargs.get('limit_yaxis_os', getattr(self, 'limit_yaxis_os', 1e-30))
         
         # Stick Spectra
-        _plot_ss_yn = kwargs.get('plot_stick_spectra_yn', getattr(self, 'plot_stick_spectra_yn', None))
-        if _plot_ss_yn is not None:
-            self.plot_stick_spectra_yn = _plot_ss_yn
-        elif 'plot_stick_spectra' in kwargs:
+        if 'plot_stick_spectra' in kwargs:
             self.plot_stick_spectra_yn = 'Y' if kwargs['plot_stick_spectra'] else 'N'
+        elif 'plot_stick_spectra_yn' in kwargs:
+            self.plot_stick_spectra_yn = kwargs['plot_stick_spectra_yn']
         elif not hasattr(self, 'plot_stick_spectra_yn'):
             self.plot_stick_spectra_yn = 'N'
             
@@ -413,11 +484,10 @@ class Config:
         self.limit_yaxis_stick_spectra = kwargs.get('limit_yaxis_stick_spectra', getattr(self, 'limit_yaxis_stick_spectra', 1e-30))
         
         # Cross Section
-        _plot_xs_yn = kwargs.get('plot_cross_section_yn', getattr(self, 'plot_cross_section_yn', None))
-        if _plot_xs_yn is not None:
-            self.plot_cross_section_yn = _plot_xs_yn
-        elif 'plot_cross_section' in kwargs:
+        if 'plot_cross_section' in kwargs:
             self.plot_cross_section_yn = 'Y' if kwargs['plot_cross_section'] else 'N'
+        elif 'plot_cross_section_yn' in kwargs:
+            self.plot_cross_section_yn = kwargs['plot_cross_section_yn']
         elif not hasattr(self, 'plot_cross_section_yn'):
             self.plot_cross_section_yn = 'N'
 
@@ -444,19 +514,37 @@ class Config:
         self.check_lifetime = meta['check_lifetime']
         self.check_gfactor = meta['check_gfactor']
         self.check_predissoc = meta['check_predissoc']
+        if not getattr(self, 'qnslabel_list', []):
+            self.qnslabel_list = meta.get('qnslabel_list', [])
+        if not getattr(self, 'qnsformat_list', []):
+            self.qnsformat_list = meta.get('qnsformat_list', [])
+        if getattr(self, 'qns_label', []) and not getattr(self, 'qns_format', []):
+            self.qns_format = qn_formats_for_labels(
+                self.qns_label,
+                self.qnslabel_list,
+                self.qnsformat_list,
+                self.states_col,
+                self.states_fmt,
+            )
+        if getattr(self, 'global_qn_label_list', []) and len(getattr(self, 'global_qn_format_list', [])) != len(self.global_qn_label_list):
+            self.global_qn_format_list = qn_formats_for_labels(
+                self.global_qn_label_list,
+                self.qnslabel_list,
+                self.qnsformat_list,
+                self.states_col,
+                self.states_fmt,
+            )
+        if getattr(self, 'local_qn_label_list', []) and len(getattr(self, 'local_qn_format_list', [])) != len(self.local_qn_label_list):
+            self.local_qn_format_list = qn_formats_for_labels(
+                self.local_qn_label_list,
+                self.qnslabel_list,
+                self.qnsformat_list,
+                self.states_col,
+                self.states_fmt,
+            )
         if self.database == 'ExoMolHR':
             self.dataset = meta.get('dataset', self.dataset)
             self.data_info = [self.molecule, self.isotopologue, self.dataset]
-            if not getattr(self, 'qnslabel_list', []):
-                self.qnslabel_list = meta.get('qnslabel_list', [])
-            if not getattr(self, 'qnsformat_list', []):
-                self.qnsformat_list = meta.get('qnsformat_list', [])
-            if getattr(self, 'qns_label', []) and not getattr(self, 'qns_format', []):
-                self.qns_format = [
-                    self.qnsformat_list[self.qnslabel_list.index(label)]
-                    for label in self.qns_label
-                    if label in self.qnslabel_list
-                ]
         resolved_species_main_id = meta['species_main_id']
         resolved_species_sub_id = meta['species_sub_id']
         # For ExoMol/ExoAtom, keep non-zero IDs that were already parsed from
@@ -471,7 +559,7 @@ class Config:
         else:
             self.species_main_id = resolved_species_main_id
             self.species_sub_id = resolved_species_sub_id
-        self.abundance = meta['abundance']
+        self.abundance = getattr(self, '_api_abundance', meta['abundance'])
         self.mass = meta['mass']
     
     def _set_attributes(self, params):
@@ -518,6 +606,11 @@ class Config:
          self.tvib_list, self.trot_list, self.vib_label, self.rot_label,
          self.plot_cross_section_yn, self.plot_cross_section_method,
          self.plot_cross_section_wn_wl, self.plot_cross_section_unit, self.limit_yaxis_xsec) = params
+        self.device = self.run_mode
+        self.cache = 'auto'
+        self.cache_dir = None
+        self.max_memory = 512
+        self.refresh_cache = False
     
     def to_globals(self):
         """
@@ -526,6 +619,9 @@ class Config:
         This is used to make configuration available to legacy code that uses
         global variables. Sets variables in the core module's globals.
         """
+        from pyexocross.base.config_manager import ConfigManager
+        ConfigManager._last_config = self
+
         import sys
         import pyexocross.core as core_module
         
@@ -548,6 +644,7 @@ class Config:
             'ncpufiles': 'ncpufiles',
             'chunk_size': 'chunk_size',
             'run_mode': 'run_mode',
+            'device': 'device',
             'gpu_backend': 'gpu_backend',
             'gpu_batch_lines': 'gpu_batch_lines',
             'gpu_batch_grid': 'gpu_batch_grid',
@@ -694,6 +791,7 @@ class Config:
             'ncpufiles': 'ncpufiles',
             'chunk_size': 'chunk_size',
             'run_mode': 'run_mode',
+            'device': 'device',
             'gpu_backend': 'gpu_backend',
             'gpu_batch_lines': 'gpu_batch_lines',
             'gpu_batch_grid': 'gpu_batch_grid',

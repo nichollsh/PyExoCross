@@ -9,8 +9,56 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from ..base.utils import Timer, ensure_dir
-from ..process.stick_xsec_filepath import cross_section_filepath, temperature_pressure_string
+from ..process.stick_xsec_filepath import (
+    cross_section_filepath,
+    crosssectiondetails,
+    temperature_pressure_string,
+)
 from .mpl_safety import configure_mpl_large_path_rendering
+
+
+def _axis_values_from_wavenumber(wn, values, axis_kind, axis_unit):
+    """Return paired x/value arrays in the requested axis unit, sorted by x."""
+    wn = np.asarray(wn)
+    values = np.asarray(values)
+    if axis_kind == 'WN':
+        x_value = wn
+        value_out = values
+        unit_fn = 'cm-1__'
+        axis_label = 'Wavenumber, cm⁻¹'
+    elif axis_kind == 'WL' and axis_unit == 'um':
+        if np.any(wn <= 0):
+            print(
+                'Warning: Wavenumber values at or below 0 cm⁻¹ cannot be '
+                'converted to a finite wavelength and were omitted. Set '
+                'min_range above 0 when plotting in wavelength.'
+            )
+        mask = wn > 0
+        x_value = 1e4 / wn[mask]
+        value_out = values[mask]
+        unit_fn = 'um__'
+        axis_label = 'Wavelength, μm'
+    elif axis_kind == 'WL' and axis_unit == 'nm':
+        if np.any(wn <= 0):
+            print(
+                'Warning: Wavenumber values at or below 0 cm⁻¹ cannot be '
+                'converted to a finite wavelength and were omitted. Set '
+                'min_range above 0 when plotting in wavelength.'
+            )
+        mask = wn > 0
+        x_value = 1e7 / wn[mask]
+        value_out = values[mask]
+        unit_fn = 'nm__'
+        axis_label = 'Wavelength, nm'
+    else:
+        raise ValueError('Please wirte the unit of wavelength in the input file: um or nm.')
+
+    valid = np.isfinite(x_value) & np.isfinite(value_out)
+    x_value = x_value[valid]
+    value_out = value_out[valid]
+    order = np.argsort(x_value)
+    return x_value[order], value_out[order], unit_fn, axis_label
+
 
 # Plot and Save Results
 def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_idx=None,
@@ -55,8 +103,30 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
         LTE_NLTE,
         photo,
         bin_size,
+        cutoff,
         T_list,
     )
+    wn = np.asarray(wn)
+    xsec = np.asarray(xsec)
+    from pyexocross.base.result import Condition, record, saving_enabled
+    Tvib = None
+    Trot = None
+    if temp_idx is not None:
+        if NLTEMethod == 'T' and Tvib_list_param:
+            Tvib = Tvib_list_param[temp_idx]
+        if NLTEMethod in ('T', 'D') and Trot_list_param:
+            Trot = Trot_list_param[temp_idx]
+    axis = 'wavenumber' if wn_wl == 'WN' else 'wavelength'
+    record(
+        'cross_section',
+        xsec,
+        {axis: wn},
+        {axis: 'cm-1' if wn_wl == 'WN' else wn_wl_unit,
+         'data': 'cm-1/(molecule cm-2)'},
+        Condition(T, P, Tvib, Trot),
+    )
+    if not saving_enabled():
+        return
     xsecs_foldername = save_path+'xsecs/files/'+data_info[0]+'/'+database+'/'
     ensure_dir(xsecs_foldername)
     configure_mpl_large_path_rendering()
@@ -64,6 +134,14 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
     max_v = max(wn)
     # Check if profile is pressure-dependent (Lorentzian/Voigt need pressure, but Doppler/Gaussian don't)
     pressure_dependent = profile_label not in ['Gaussian', 'Doppler', 'Binned Doppler', 'Binned Gaussion']
+    if wn_wl == 'WN':
+        bin_unit_fn = 'cm-1__'
+    elif wn_wl == 'WL' and wn_wl_unit == 'um':
+        bin_unit_fn = 'um__'
+    elif wn_wl == 'WL' and wn_wl_unit == 'nm':
+        bin_unit_fn = 'nm__'
+    else:
+        raise ValueError('Please choose wavenumber or wavelength and type in correct format: wn or wl.')
 
     # Resolve local Tvib/Trot lists (allow explicit args or fall back to globals)
     if Tvib_list_param is not None:
@@ -117,6 +195,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             database,
             abs_emi,
             bin_size,
+            cutoff,
             profile_label,
             LTE_NLTE,
             photo,
@@ -124,7 +203,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             pressure_dependent,
         )
         np.savetxt(xsec_filepath, xsec_df, fmt="%15.6f %15.8E")
-        ts.end()
+        ts.end('save')
         # File info printed once by caller
         print('Cross sections file has been saved:', xsec_filepath)
         
@@ -147,76 +226,17 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             plt.rcParams.update(parameters)
             # Plot cross sections and save it as .png.
             plt.figure(figsize=(12, 6))
-            if PlotCrossSectionWnWl == 'WN':
-                plt.xlabel('Wavenumber, cm⁻¹')
-                unit_fn = 'cm-1__'
-                plt.xlim([min_v, max_v])
-                v_value = wn
-                # For wavenumber plots, use original data
-                xsec_plot = xsec
-                # Store for filename generation
-                plot_min_v = min_v
-                plot_max_v = max_v                
-            elif PlotCrossSectionWnWl == 'WL' and PlotCrossSectionUnit == 'um':
-                plt.xlabel('Wavelength, μm')
-                unit_fn = 'um__'
-                # Filter out zeros from wn before conversion to avoid Inf
-                # Create mask for non-zero wavenumbers
-                nonzero_mask = wn > 0
-                if np.sum(nonzero_mask) == 0:
-                    print(f'Warning: All wavenumbers are zero or negative. Cannot plot wavelength.')
-                    xsec_plot = np.array([])
-                    v_value = np.array([])
-                else:
-                    # Convert to wavelength for non-zero wavenumbers only
-                    v_value = 1e4/wn[nonzero_mask]
-                    xsec_plot = xsec[nonzero_mask]
-                    # Filter out Inf and NaN values for plotting
-                    valid_mask = np.isfinite(v_value) & np.isfinite(xsec_plot)
-                    v_value = v_value[valid_mask]
-                    xsec_plot = xsec_plot[valid_mask]
-                    
-                    # Calculate axis limits from FILTERED data
-                    if len(v_value) > 0:
-                        plot_min_v = np.min(v_value)
-                        plot_max_v = np.max(v_value)
-                        plt.xlim([plot_min_v, plot_max_v])
-                    else:
-                        xsec_plot = np.array([])
-                        v_value = np.array([])
-                        plot_min_v = min_v
-                        plot_max_v = max_v
-            elif PlotCrossSectionWnWl == 'WL' and PlotCrossSectionUnit == 'nm':
-                plt.xlabel('Wavelength, nm')
-                unit_fn = 'nm__'
-                # Filter out zeros from wn before conversion to avoid Inf
-                # Create mask for non-zero wavenumbers
-                nonzero_mask = wn > 0
-                if np.sum(nonzero_mask) == 0:
-                    print(f'Warning: All wavenumbers are zero or negative. Cannot plot wavelength.')
-                    xsec_plot = np.array([])
-                    v_value = np.array([])
-                else:
-                    # Convert to wavelength for non-zero wavenumbers only
-                    v_value = 1e7/wn[nonzero_mask]
-                    xsec_plot = xsec[nonzero_mask]
-                    # Filter out Inf and NaN values for plotting
-                    valid_mask = np.isfinite(v_value) & np.isfinite(xsec_plot)
-                    v_value = v_value[valid_mask]
-                    xsec_plot = xsec_plot[valid_mask]
-                    
-                    # Calculate axis limits from FILTERED data
-                    if len(v_value) > 0:
-                        plot_min_v = np.min(v_value)
-                        plot_max_v = np.max(v_value)
-                        plt.xlim([plot_min_v, plot_max_v])
-                    else:
-                        xsec_plot = np.array([])
-                        v_value = np.array([])
-                        plot_min_v = min_v
-                        plot_max_v = max_v
+            v_value, xsec_plot, unit_fn, axis_label = _axis_values_from_wavenumber(
+                wn, xsec, PlotCrossSectionWnWl, PlotCrossSectionUnit
+            )
+            plt.xlabel(axis_label)
+            if len(v_value) > 0:
+                plot_min_v = np.min(v_value)
+                plot_max_v = np.max(v_value)
+                plt.xlim([plot_min_v, plot_max_v])
             else:
-                raise ValueError('Please wirte the unit of wavelength in the input file: um or nm.')  
+                plot_min_v = min_v
+                plot_max_v = max_v
             
             # Check if we have data to plot
             if len(xsec_plot) == 0 or len(v_value) == 0:
@@ -236,7 +256,8 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
                     return
                 else:
                     # Debug: Check data ranges
-                    print(f'Info: Plotting cross sections: {len(v_value)} points, v range: [{np.min(v_value):.2f}, {np.max(v_value):.2f}] {wn_wl_unit.replace("um", "μm").replace("cm-1", "cm⁻¹")}, xsec range: [{np.min(xsec_plot):.2e}, {np.max(xsec_plot):.2e}] {xsec_y_unit}, non-zero xsec count: {np.sum(xsec_plot > 0)}')
+                    plot_unit = PlotCrossSectionUnit.replace('um', 'μm').replace('cm-1', 'cm⁻¹')
+                    print(f'Info: Plotting cross sections: {len(v_value)} points, x range: [{np.min(v_value):.2f}, {np.max(v_value):.2f}] {plot_unit}, xsec range: [{np.min(xsec_plot):.2e}, {np.max(xsec_plot):.2e}] {xsec_y_unit}, non-zero xsec count: {np.sum(xsec_plot > 0)}')
             else:
                 print(f'Warning: xsec_plot is empty after filtering. Original xsec length: {len(xsec)}, non-zero xsec count: {np.sum(xsec > 0) if len(xsec) > 0 else 0}. Skipping plot.')
                 plt.close()
@@ -307,10 +328,11 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             xsec_plotpath = (plots_foldername + '__'.join(data_info) + '__' + T_str + '__' + PlotCrossSectionWnWl.lower()
                              + str_min_wnl + '-' + str_max_wnl + unit_fn + 'unc' + str(UncFilter)
                              + '__thres' + str(threshold) + '__' + database + '__' + abs_emi
-                             + '__BinSize' + str(bin_size) + unit_fn + profile_label.replace(' ','') + photo + LTE_NLTE +'.png')
+                             + crosssectiondetails(bin_size, bin_unit_fn, cutoff, profile_label)
+                             + photo + LTE_NLTE + '.png')
             plt.savefig(xsec_plotpath, dpi=500)
             plt.close()  # Close figure to free memory and ensure it's saved
-            tp.end()
+            tp.end('save')
             print('Cross sections plot has been saved:', xsec_plotpath)
         else:
             pass
@@ -325,7 +347,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             unit_ffn = 'nm__'
         else:
             raise ValueError('Please wirte the unit of wavelength in the input file: um or nm.')   
-        wl = unit_change / wn
+        wl, xsec_save, _, _ = _axis_values_from_wavenumber(wn, xsec, 'WL', wn_wl_unit)
         min_wl = min(wl)
         max_wl = max(wl)
         # min_wl = '%.02f' % min(wl)
@@ -336,7 +358,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
         ts.start()
         xsec_df = pd.DataFrame()
         xsec_df['wavelength'] = wl
-        xsec_df['cross-section'] = xsec
+        xsec_df['cross-section'] = xsec_save
         str_min_wl = str(int(np.floor(min_wl)))
         str_max_wl = str(int(np.ceil(max_wl)))
         xsec_filepath = cross_section_filepath(
@@ -356,6 +378,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             database,
             abs_emi,
             bin_size,
+            cutoff,
             profile_label,
             LTE_NLTE,
             photo,
@@ -363,7 +386,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             pressure_dependent,
         )
         np.savetxt(xsec_filepath, xsec_df, fmt="%15.8E %15.8E")
-        ts.end()
+        ts.end('save')
         # File info printed once by caller
         print('Cross sections file has been saved:', xsec_filepath)       
         
@@ -386,60 +409,51 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             plt.rcParams.update(parameters)
             # Plot cross sections and save it as .png.
             plt.figure(figsize=(12, 6))
-            if PlotCrossSectionWnWl == 'WN':
-                unit_pfn = 'cm-1__'
-                plot_unit_str = 'Wavenumber, cm⁻¹'
-                min_v_value = min_v
-                max_v_value = max_v
-                plt.xlim([min_v_value, max_v_value])
-                v_value = wn
-            elif PlotCrossSectionWnWl == 'WL' and PlotCrossSectionUnit == 'um':
-                unit_pfn = 'um__'
-                plot_unit_str = 'Wavelength, μm'
-                min_v_value = 1e4/max_v
-                max_v_value = 1e4/min_v
-                plt.xlim([min_v_value, max_v_value])
-                v_value = 1e4/wn
-            elif PlotCrossSectionWnWl == 'WL' and PlotCrossSectionUnit == 'nm':
-                unit_pfn = 'nm__'
-                plot_unit_str = 'Wavelength, nm'
-                min_v_value = 1e7/max_v
-                max_v_value = 1e7/min_v
-                plt.xlim([min_v_value, max_v_value])
-                v_value = 1e7/wn
-            else:
-                raise ValueError('Please wirte the unit of wavelength in the input file: um or nm.')   
+            v_value, xsec_plot, unit_pfn, plot_unit_str = _axis_values_from_wavenumber(
+                wn, xsec, PlotCrossSectionWnWl, PlotCrossSectionUnit
+            )
+            if len(v_value) == 0:
+                print('Warning: No valid data to plot for cross sections. Skipping plot.')
+                plt.close()
+                return
+            min_v_value = np.min(v_value)
+            max_v_value = np.max(v_value)
+            plt.xlim([min_v_value, max_v_value])
+
+            P_label = ''
+            if pressure_dependent and P is not None:
+                P_label = f', P = {P} bar'
 
             if NLTEMethod == 'L' or NLTEMethod == 'P':
-                label_str = f'T = {T} K, {profile_label}' if T is not None else f'T = {min(T_list)}-{max(T_list)} K, {profile_label}'
-                plt.plot(v_value, xsec, label=label_str, linewidth=0.4)  
+                label_str = f'T = {T} K{P_label}, {profile_label}' if T is not None else f'T = {min(T_list)}-{max(T_list)} K{P_label}, {profile_label}'
+                plt.plot(v_value, xsec_plot, label=label_str, linewidth=0.4)
             elif NLTEMethod == 'T':
                 if T is not None and temp_idx is not None:
                     Tvib_val = Tvib_list_use[temp_idx]
                     Trot_val = Trot_list_use[temp_idx]
-                    label_str = f'T$_{{vib}}$ = {Tvib_val} K, T$_{{rot}}$ = {Trot_val} K, {profile_label}'
+                    label_str = f'T$_{{vib}}$ = {Tvib_val} K, T$_{{rot}}$ = {Trot_val} K{P_label}, {profile_label}'
                 else:
                     label_str = (
                         f'T$_{{vib}}$ = {min(Tvib_list_use)}-{max(Tvib_list_use)} K, '
-                        f'T$_{{rot}}$ = {min(Trot_list_use)}-{max(Trot_list_use)} K, {profile_label}'
+                        f'T$_{{rot}}$ = {min(Trot_list_use)}-{max(Trot_list_use)} K{P_label}, {profile_label}'
                     )
-                plt.plot(v_value, xsec, label=label_str, linewidth=0.4)
+                plt.plot(v_value, xsec_plot, label=label_str, linewidth=0.4)
             elif NLTEMethod == 'D':
                 if T is not None and temp_idx is not None:
                     Trot_val = Trot_list_use[temp_idx]
-                    label_str = f'T$_{{rot}}$ = {Trot_val} K, {profile_label}'
+                    label_str = f'T$_{{rot}}$ = {Trot_val} K{P_label}, {profile_label}'
                 else:
                     label_str = (
-                        f'T$_{{rot}}$ = {min(Trot_list_use)}-{max(Trot_list_use)} K, {profile_label}'
+                        f'T$_{{rot}}$ = {min(Trot_list_use)}-{max(Trot_list_use)} K{P_label}, {profile_label}'
                     )
-                plt.plot(v_value, xsec, label=label_str, linewidth=0.4) 
+                plt.plot(v_value, xsec_plot, label=label_str, linewidth=0.4)
             else:
                 raise ValueError("Please choose 'LTE' or 'Non-LTE'; if choose 'Non-LTE', please choose one non-LTE method from: 'T', 'D' or 'P'.")          
             if PlotCrossSectionMethod == 'LOG':
-                plt.ylim([limitYaxisXsec, 10*max(xsec)])
+                plt.ylim([limitYaxisXsec, 10*max(xsec_plot)])
                 plt.semilogy()
             else:
-                plt.ylim([limitYaxisXsec, 1.05*max(xsec)])
+                plt.ylim([limitYaxisXsec, 1.05*max(xsec_plot)])
             #plt.title(database+' '+data_info[0]+' '+abs_emi+' Cross-Section with '+ profile_label) 
             plt.xlabel(plot_unit_str)
             plt.ylabel(f'Cross-section, {xsec_y_unit}')
@@ -452,10 +466,11 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             xsec_plotpath = (plots_foldername+'__'.join(data_info)+'__'+T_str+'__'+PlotCrossSectionWnWl.lower()
                              +str_min_wnl+'-'+str_max_wnl+unit_pfn+'unc'+str(UncFilter)
                              +'__thres'+str(threshold)+'__'+database+'__'+abs_emi 
-                             +'__BinSize'+str(bin_size)+unit_ffn+profile_label.replace(' ','')+photo+LTE_NLTE+'.png')
+                             + crosssectiondetails(bin_size, unit_ffn, cutoff, profile_label)
+                             + photo + LTE_NLTE + '.png')
             plt.savefig(xsec_plotpath, dpi=500)
             plt.close()  # Close figure to free memory and ensure it's saved
-            tp.end()
+            tp.end('save')
             print('Cross sections plot has been saved:', xsec_plotpath)
         else:
             pass

@@ -1,7 +1,6 @@
 """
 Test all PyExoCross API functions using HITRAN NO parameters.
 
-Parameters are derived from: input/NO_HITRAN.inp
 """
 import sys
 import os
@@ -27,63 +26,92 @@ COMMON = dict(
     read_path='/Users/beryl/Academic/UCL/PhD/Data/database/HITRAN/', #'/home/jingxin/LHD/Program/Databases/HITRAN/',
     save_path='/Users/beryl/Academic/UCL/PhD/Data/pyexocross/', #'/home/jingxin/LHD/Program/Data/pyexocross/',
     logs_path='/Users/beryl/Academic/UCL/PhD/Data/pyexocross/log/test_api_hitran.log', #'/home/jingxin/LHD/Program/Data/pyexocross/log/test_api_hitran.log',
+    cache='parquet',
 )
 
-# Quantum number labels/formats (needed by conversion, stick_spectra, cross_sections)
-QN_PARAMS = dict(
-    qnslabel_list=['J', 'X', 'Omega', 'v1', 'Sym', 'F'],
-    qnsformat_list=['%5.1f', '%2s', '%3s', '%2d', '%1s', '%5s'],
-)
-
-# Conversion QN labels (for HITRAN functions that internally perform conversion)
-CONVERSION_QN = dict(
-    global_qn_label_list=['X', 'Omega', 'v1'],      # Quantum number label for global quantum numbers
-    global_qn_format_list=['%2s', '%3s', '%2d'],    # Quantum number format for global quantum numbers
-    local_qn_label_list=['Br', 'Sym', 'F'],         # Quantum number label for local quantum numbers
-    local_qn_format_list=['%2s', '%1s', '%5s'],     # Quantum number format for local quantum numbers
-)
-
-# NLTE parameters (needed by stick_spectra and cross_sections)
-NLTE_PARAMS = dict(
-    nlte_method='T',            # Non-LTE: 2T NLTE (default: 'T')
-    tvib_list=[1000, 2000],     # Vibrational temperatures in unit of K
-    trot_list=[300, 400],       # Rotational temperatures in unit of K
-    vib_label=['v1', 'X'],      # Vibrational quantum numbers
-    rot_label=['J'],            # Rotational quantum numbers
-)
-
-# Spectral range parameters
-RANGE_PARAMS = dict(
-    temperatures=[1000, 2000],  # Temperature in unit of K
-    wn_wl='WN',                 # Wavenumber (wn in unit cm⁻¹) or wavelength (wl in unit[nm or um]) (default: 'WN')
-    wn_wl_unit='cm-1',          # Unit for wavenumber (default: cm⁻¹)
-    min_range=0,                # Minimum wavenumber in unit of cm⁻¹
-    max_range=30000,            # Maximum wavenumber in unit of cm⁻¹
-    abs_emi='Ab',               # Absorption or emission (default: 'Absorption')
-    unc_filter=0.01,            # Uncertainty filter (default: None)
-    threshold=1e-35,            # Threshold filter (default: None)
-)
 
 # Cores and chunks
 COMPUTE_PARAMS = dict(
     ncputrans=4,                # Number of CPU threads for each transition file (default: 4)
     ncpufiles=1,                # Number of CPU files for transition calculation (default: 1)
     chunk_size=100000,          # Chunk size for transition calculation (default: 100000)
+    device='CPU',               # Device: 'CPU' or 'GPU' (default: 'CPU')
+)
+
+
+# Spectral range parameters
+RANGE_PARAMS = dict(
+    wn_wl='WN',                 # Wavenumber (wn in unit cm⁻¹) or wavelength (wl in unit[nm or um]) (default: 'WN')
+    wn_wl_unit='cm-1',          # Unit for wavenumber (default: cm⁻¹)
+    min_range=0,                # Minimum wavenumber in unit of cm⁻¹
+    max_range=63000,            # Maximum wavenumber in unit of cm⁻¹  
+    unc_filter=0.05,            # Uncertainty filter (default: None)
+)
+
+
+# Quantum number labels/formats (needed by conversion, stick_spectra, cross_sections)
+QN_PARAMS = dict(
+    qnslabel_list=['J', 'X', 'Omega', 'v', 'Sym', 'F'],
+    qnsformat_list=['%5.1f', '%2s', '%3s', '%2d', '%1s', '%5s'],
+)
+
+
+# Conversion QN labels (for HITRAN functions that internally perform conversion)
+CONVERSION_QN = dict(
+    global_qn_label_list=['X', 'Omega', 'v'],       # Quantum number label for global quantum numbers
+    global_qn_format_list=['%2s', '%3s', '%2d'],    # Quantum number format for global quantum numbers
+    local_qn_label_list=['Sym', 'F'],               # Quantum number label for local quantum numbers
+    local_qn_format_list=['%1s', '%5s'],            # Quantum number format for local quantum numbers
+)
+
+
+# NLTE parameters (needed by stick_spectra and cross_sections)
+NLTE_PARAMS = dict(
+    nlte_method='T',            # Non-LTE: 2T NLTE (default: 'T')
+    tvib_list=[1000, 2000],     # Vibrational temperatures in unit of K
+    trot_list=[300, 400],       # Rotational temperatures in unit of K
+    vib_label=['v', 'X'],       # Vibrational quantum numbers
+    rot_label=['J'],            # Rotational quantum numbers
+)
+
+
+data=px.load(
+    **COMMON,
+    **RANGE_PARAMS,
+    **COMPUTE_PARAMS,
 )
 
 
 # ---------------------------------------------------------------------------
 # Test functions
 # ---------------------------------------------------------------------------
+def test_download():
+    """Test download HITRAN files."""
+    print('\n' + '='*70)
+    print('TEST: px.download()')
+    print('='*70)
+    px.download(    
+        file_path='/Users/beryl/Academic/UCL/PhD/Data/database/HITRAN/',    # Write that file_path or save_path are the same in download
+        database='HITRAN',
+        species_info={
+            'NO': {
+                '14N-16O': {'wn_range': [0,63000]},
+                '15N-16O': {'wn_range': [100,150]},
+            },
+        },
+        download=True,
+    )
+    print('PASSED: download()')  
+    
+    
 def test_conversion():
     """Test HITRAN -> ExoMol conversion."""
     print('\n' + '='*70)
     print('TEST: px.conversion()  [HITRAN -> ExoMol]')
     print('='*70)
     px.conversion(
-        **COMMON,
+        data=data,
         **QN_PARAMS,
-        **COMPUTE_PARAMS,
         **CONVERSION_QN,
         conversion_format='ExoMol',          
         conversion_min_freq=0,        # Minimum wavenumber in unit of cm⁻¹
@@ -99,13 +127,8 @@ def test_partition_functions():
     print('\n' + '='*70)
     print('TEST: px.partition_functions()')
     print('='*70)
-    # HITRAN partition functions require QN labels for internal HITRAN->ExoMol
-    # conversion to produce .states files.
     px.partition_functions(
-        **COMMON,
-        **QN_PARAMS,
-        **COMPUTE_PARAMS,
-        **CONVERSION_QN,
+        data=data,
         ntemp=1,                     # Number of temperature steps in unit of K (default: 1)
         tmax=5000,                   # Maximum temperature in unit of K (default: 5000)
     )
@@ -118,10 +141,7 @@ def test_specific_heats():
     print('TEST: px.specific_heats()')
     print('='*70)
     px.specific_heats(
-        **COMMON,
-        **QN_PARAMS,
-        **COMPUTE_PARAMS,
-        **CONVERSION_QN,
+        data=data,
         ntemp=1,                     # Number of temperature steps in unit of K (default: 1)
         tmax=5000,                   # Maximum temperature in unit of K (default: 5000)
     )
@@ -134,8 +154,7 @@ def test_cooling_functions():
     print('TEST: px.cooling_functions()')
     print('='*70)
     px.cooling_functions(
-        **COMMON,
-        **COMPUTE_PARAMS,
+        data=data,
         ntemp=1,                     # Number of temperature steps in unit of K (default: 1)
         tmax=5000,                   # Maximum temperature in unit of K (default: 5000)
     )
@@ -148,9 +167,8 @@ def test_lifetimes():
     print('TEST: px.lifetimes()')
     print('='*70)
     px.lifetimes(
-        **COMMON,
+        data=data,
         **QN_PARAMS,
-        **COMPUTE_PARAMS,
         **CONVERSION_QN,
         compress=False,               # Whether to compress the states file (default: False)
     )
@@ -163,8 +181,7 @@ def test_oscillator_strengths():
     print('TEST: px.oscillator_strengths()')
     print('='*70)
     px.oscillator_strengths(
-        **COMMON,
-        **COMPUTE_PARAMS,
+        data=data,
         gf_or_f='f',                  # 'gf' for weighted oscillator strength, 'f' for f-value (default: 'f')
         plot=True,                    # Whether to plot results (default: False)
         plot_method='log',            # Plot in linear (lin) or logarithm (log) (default: 'log')
@@ -181,11 +198,16 @@ def test_stick_spectra():
     print('TEST: px.stick_spectra()')
     print('='*70)
     px.stick_spectra(
-        **COMMON,
-        **QN_PARAMS,
-        # **NLTE_PARAMS,                # If Non-LTE is enabled, this parameter is required.
-        **RANGE_PARAMS,
-        **COMPUTE_PARAMS,
+        data=data,
+        # **QN_PARAMS,                # Required when using QN filter
+        # **NLTE_PARAMS,              # If Non-LTE is enabled, this parameter is required.
+        temperatures=[1000, 2000],    # Temperature in unit of K
+        abs_emi='Ab',                 # Absorption or emission (default: 'Absorption')
+        threshold=1e-35,              # Threshold filter (default: None)
+        wn_wl='WN',                   # Wavenumber (wn in unit cm⁻¹) or wavelength (wl in unit[nm or um]) (default: 'WN')
+        wn_wl_unit='cm-1',            # Unit for wavenumber (default: cm⁻¹)
+        min_range=0,                  # Minimum wavenumber in unit of cm⁻¹
+        max_range=30000,              # Maximum wavenumber in unit of cm⁻¹ 
         plot=True,                    # Whether to plot results (default: False)
         plot_method='log',            # Plot in linear (lin) or logarithm (log) (default: 'log')
         plot_wn_wl='WN',              # Wavenumber (wn in unit cm⁻¹) or wavelength (wl in unit[nm or um]) (default: 'WN')
@@ -201,20 +223,25 @@ def test_cross_sections():
     print('TEST: px.cross_sections()')
     print('='*70)
     px.cross_sections(
-        **COMMON,
-        **QN_PARAMS,
+        data=data,
+        # **QN_PARAMS,                  # Required when using QN filter
         # **NLTE_PARAMS,                # If Non-LTE is enabled, this parameter is required.
-        **RANGE_PARAMS,
-        **COMPUTE_PARAMS,
+        temperatures=[1000, 2000],      # Temperature in unit of K
         pressures=[1.0],                # Pressure in unit bar (default: [1.0])
+        abs_emi='Ab',                   # Absorption or emission (default: 'Absorption')
+        threshold=1e-35,                # Threshold filter (default: None)
+        wn_wl='WN',                     # Wavenumber (wn in unit cm⁻¹) or wavelength (wl in unit[nm or um]) (default: 'WN')
+        wn_wl_unit='cm-1',              # Unit for wavenumber (default: cm⁻¹)
+        min_range=0,                    # Minimum wavenumber in unit of cm⁻¹
+        max_range=30000,                # Maximum wavenumber in unit of cm⁻¹ 
         bin_size=0.1,                   # Bin size for wavenumber grid 
         profile='Gaussian',             # Line profile name (default: 'Gaussian')
         predissociation=False,          # Predissociation (default: False)
         cutoff=25.0,                    # Cutoff distance in cm⁻¹ (default: None)
-        broadeners=['Air', 'Self'],     # Broadening species (default: ['Default'])
-        ratios=[0.7, 0.3],              # Broadening ratios (default: [1.0])
-        alpha_hwhm=3.0,                 # Constant Doppler HWHM (None, will calculate from broadening) or custom value (default: 3.0)
-        gamma_hwhm=None,                # Constant Lorentzian HWHM (None, will calculate from broadening) or custom value (default: 0.5)
+        broadeners=['Air'],             # Broadening species (default: ['Default'])
+        ratios=[1],                     # Broadening ratios (default: [1.0])
+        alpha_hwhm=3.0,                 # Constant Doppler HWHM (None, will calculate from broadening) 
+        gamma_hwhm=None,                # Constant Lorentzian HWHM (None, will calculate from broadening)
         plot=True,                      # Whether to plot results (default: False)
         plot_method='log',              # Plot in linear (lin) or logarithm (log) (default: 'log')
         plot_wn_wl='WN',                # Wavenumber (wn in unit cm⁻¹) or wavelength (wl in unit[nm or um]) (default: 'WN')
@@ -230,20 +257,25 @@ def test_stick_spectra_cross_section():
     print('TEST: px.stick_spectra_cross_section()')
     print('='*70)
     px.stick_spectra_cross_section(
-        **COMMON,
-        **QN_PARAMS,
+        data=data,
+        # **QN_PARAMS,                  # Required when using QN filter
         # **NLTE_PARAMS,                # If Non-LTE is enabled, this parameter is required.
-        **RANGE_PARAMS,
-        **COMPUTE_PARAMS,
+        temperatures=[1000, 2000],      # Temperature in unit of K
         pressures=[1.0],                # Pressure in unit bar (default: [1.0])
+        abs_emi='Ab',                   # Absorption or emission (default: 'Absorption')
+        threshold=1e-35,                # Threshold filter (default: None)
+        wn_wl='WN',                     # Wavenumber (wn in unit cm⁻¹) or wavelength (wl in unit[nm or um]) (default: 'WN')
+        wn_wl_unit='cm-1',              # Unit for wavenumber (default: cm⁻¹)
+        min_range=0,                    # Minimum wavenumber in unit of cm⁻¹
+        max_range=30000,                # Maximum wavenumber in unit of cm⁻¹ 
         bin_size=0.1,                   # Bin size for wavenumber grid 
         profile='Gaussian',             # Line profile name (default: 'Gaussian')
         predissociation=False,          # Predissociation (default: False)
         cutoff=25.0,                    # Cutoff distance in cm⁻¹ (default: None)
         broadeners=['Air', 'Self'],     # Broadening species (default: ['Default'])
         ratios=[0.7, 0.3],              # Broadening ratios (default: [1.0])
-        alpha_hwhm=3.0,                 # Constant Doppler HWHM (None, will calculate from broadening) or custom value (default: 3.0)
-        gamma_hwhm=None,                # Constant Lorentzian HWHM (None, will calculate from broadening) or custom value (default: 0.5)
+        alpha_hwhm=3.0,                 # Constant Doppler HWHM (None, will calculate from broadening) 
+        gamma_hwhm=None,                # Constant Lorentzian HWHM (None, will calculate from broadening) 
         plot=True,                      # Whether to plot results (default: False)
         plot_method='log',              # Plot in linear (lin) or logarithm (log) (default: 'log')
         plot_wn_wl='WN',                # Wavenumber (wn in unit cm⁻¹) or wavelength (wl in unit[nm or um]) (default: 'WN')
@@ -261,6 +293,7 @@ if __name__ == '__main__':
     print(f'pyexocross version: {px.__version__}')
 
     tests = [
+        test_download,
         test_conversion,
         test_partition_functions,
         test_specific_heats,

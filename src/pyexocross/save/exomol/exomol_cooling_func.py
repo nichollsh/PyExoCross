@@ -7,13 +7,13 @@ import os
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pyexocross.base.utils import Timer, ensure_dir
 from pyexocross.base.log import log_tqdm, print_file_info
 from pyexocross.base.large_file import (
     is_large_trans_file,
     read_trans_chunks,
+    sourcename,
 )
 from pyexocross.calculation.calculate_para import cal_v
 from pyexocross.calculation.calculate_cooling_func import cal_cooling_func
@@ -97,13 +97,10 @@ def process_exomol_cooling_func_chunk(states_df,Ts,trans_df):
     
     num = len(v)
     if num > 0:
-        # with _executor_context(max_workers=ncputrans) as executor:
-        #     futures = [executor.submit(cal_cooling_func, A, v, Ep, gp, T_val, Q_val)
-        #             for T_val, Q_val in log_tqdm(zip(Ts, Qs), desc='Calculating')]
-        #     cooling_func = [future.result() for future in futures] 
-            
-        cooling_func = cal_cooling_func(A, v, Ep, gp, Ts, Qs)
-            
+        with _executor_context(max_workers=ncputrans) as executor:
+            futures = [executor.submit(cal_cooling_func, A, v, Ep, gp, T_val, Q_val)
+                    for T_val, Q_val in log_tqdm(zip(Ts, Qs), desc='Calculating')]
+            cooling_func = [future.result() for future in futures] 
     else:
         cooling_func = np.zeros(len(Ts))
     return cooling_func
@@ -131,8 +128,8 @@ def process_exomol_cooling_func(states_df, Ts, trans_filepath):
     # Import legacy-style configuration variables from core (set via Config.to_globals()).
     from pyexocross.core import ncputrans 
 
-    trans_filename = trans_filepath.split('/')[-1]
-    print('Processeing transitions file:', trans_filename)
+    trans_filename = sourcename(trans_filepath)
+    print('Processing transitions file:', trans_filename)
     use_cols = [0,1,2]
     use_names = ['uid','lid','A']
     large_file = is_large_trans_file(trans_filepath)
@@ -160,7 +157,7 @@ def process_exomol_cooling_func(states_df, Ts, trans_filepath):
     print('')
     return cooling_func
 
-def save_exomol_cooling_func(states_df, Ntemp, Tmax):
+def save_exomol_cooling_func(states_df, Ntemp, Tmax, trans_sources=None):
     """
     Main function to calculate and save cooling functions for ExoMol database.
 
@@ -177,7 +174,7 @@ def save_exomol_cooling_func(states_df, Ntemp, Tmax):
         Maximum temperature in Kelvin
     """
     # tqdm.write('Calculate cooling functions.') 
-    print('Calculate cooling functions.')  
+    print('\nCalculate cooling functions.')  
     # Import legacy-style configuration variables from core (set via Config.to_globals()).
     from pyexocross.core import read_path, data_info, save_path, ncpufiles, ncputrans  
 
@@ -185,7 +182,11 @@ def save_exomol_cooling_func(states_df, Ntemp, Tmax):
     t.start()
     Ts = np.array(range(Ntemp, Tmax+1, Ntemp)) 
     print('Reading all transitions and calculating cooling functions ...')
-    trans_filepaths = get_transfiles(read_path, data_info)
+    trans_filepaths = (
+        trans_sources
+        if trans_sources is not None
+        else get_transfiles(read_path, data_info)
+    )
     # Process multiple files in parallel
     with _executor_context(max_workers=ncpufiles) as executor:
         # Submit reading tasks for each file
@@ -196,19 +197,23 @@ def save_exomol_cooling_func(states_df, Ntemp, Tmax):
     cooling_func_df = pd.DataFrame()
     cooling_func_df['T'] = Ts
     cooling_func_df['cooling function'] = cooling_func
-    t.end()
+    from pyexocross.base.result import record, saving_enabled
+    record('cooling_function', cooling_func_df, {'temperature': Ts}, {'temperature': 'K'})
+    t.end('calculate')
     print('Finished reading all transitions and calculating cooling functions!\n')
     
-    print('Saving cooling functions into file ...')   
+    print('Preparing cooling function output ...')
     ts = Timer()    
     ts.start()     
-    cf_folder = save_path + 'cooling/'
-    ensure_dir(cf_folder)
-    cf_path = cf_folder + '__'.join(data_info[-2:]) + '.cf' 
-    np.savetxt(cf_path, cooling_func_df, fmt="%8.1f %20.8E")
-    ts.end()
+    cf_path = None
+    if saving_enabled():
+        cf_folder = save_path + 'cooling/'
+        ensure_dir(cf_folder)
+        cf_path = cf_folder + '__'.join(data_info[-2:]) + '.cf'
+        np.savetxt(cf_path, cooling_func_df, fmt="%8.1f %20.8E")
+    ts.end('save' if cf_path else None)
     print_file_info('Cooling functions', ['T', 'Cooling function'], ['%8.1f','%20.8E'])
-    print('Cooling functions file has been saved:', cf_path, '\n')  
-    print('Cooling functions have been saved!\n')  
+    print('Cooling functions file has been saved:', cf_path, '\n') if cf_path else print('Cooling functions retained in memory.\n')
+    print('Cooling function calculation finished!\n')
     # tqdm.write('Cooling functions has been saved!\n') 
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')  

@@ -2,6 +2,8 @@
 
 The examples of the whole input files for databases can be obtained from the `input` folder of *PyExoCross*'s ***GitHub*** : [https://github.com/Beryl-Jingxin/PyExoCross](https://github.com/Beryl-Jingxin/PyExoCross).
 
+For ExoMol, ExoMolHR, and ExoAtom examples, `QNslabel` and `QNsformat` are optional overrides when the same labels can be resolved from metadata. HITRAN and HITEMP examples still provide explicit QN labels and formats.
+
 ## Example for the ExoMol database
 
 ```bash
@@ -16,7 +18,7 @@ SpeciesID                               666
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -34,10 +36,10 @@ CrossSections                           1
 NCPUtrans                               4
 NCPUfiles                               1
 ChunkSize                               1000000
-RunMode                                 CPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when RunMode=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+Device                                  CPU                       # CPU(default) or GPU
+GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
@@ -128,7 +130,7 @@ SpeciesID                               81
 # File path #
 ReadPath                                /mnt/data/exomolhr/exomolhr_results/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/NO_ExoMolHR.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/NO_ExoMolHR.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -146,10 +148,10 @@ CrossSections                           1
 NCPUtrans                               4
 NCPUfiles                               1
 ChunkSize                               1000000
-RunMode                                 CPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when RunMode=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+Device                                  CPU                       # CPU(default) or GPU
+GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 
 
 # Conversion #
@@ -217,7 +219,7 @@ Dataset                                 NIST
 # File path #
 ReadPath                                /mnt/data/exoatom/exoatom_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/Li_ExoAtom.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/Li_ExoAtom.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -235,10 +237,10 @@ CrossSections                           1
 NCPUtrans                               1
 NCPUfiles                               1
 ChunkSize                               10000
-RunMode                                 CPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when RunMode=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+Device                                  CPU                       # CPU(default) or GPU
+GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
@@ -323,7 +325,7 @@ SpeciesID                               11
 # File path #
 ReadPath                                /home/jingxin/data/HITRAN/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/H2O_HITRAN_xsec.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/H2O_HITRAN_xsec.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -341,10 +343,10 @@ CrossSections                           1
 NCPUtrans                               32
 NCPUfiles                               1
 ChunkSize                               1000000
-RunMode                                 CPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when RunMode=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+Device                                  CPU                       # CPU(default) or GPU
+GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
@@ -409,8 +411,8 @@ QNsRotLabel                            J,Ka,Kc
 # Calculate cross sections #
 Pressures                               1,10                      # Pressures in unit bar
 Npoints/BinSize                         Npoints    10001          # Same unit as WnWlUnit
-Broadeners                              Air        Self 
-Ratios                                  0.7        0.3         
+Broadeners                              Air       
+Ratios                                  1.0      
 Profile                                 Lorentzian      
 PredissocXsec(Y/N)                      N
 Cutoff(Y/N)                             Y          25             # If Y, default value 25 cm-1

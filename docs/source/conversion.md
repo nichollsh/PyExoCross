@@ -52,6 +52,10 @@ For 3 different symmetry indices and inversional parity labels, please write wri
 
 Here, the quantum number formats are the formats of quantum numbers you want to save in the output file.
 
+For ExoMol and ExoAtom input, these format rows are optional when the labels in `GlobalQNLabel` and `LocalQNLabel` can be found in the definition metadata files (`.def.json`, `.def`, or `.adef.json`). *PyExoCross* uses shortened metadata labels, for example `Herzberg:n1` becomes `n1`. Provide `GlobalQNFormat` and `LocalQNFormat` only when you need to override the metadata-derived formats.
+
+For HITRAN, HITEMP, or custom files without ExoMol metadata, provide the quantum number formats explicitly.
+
 In the standard HITRAN2004 format, both global and local quantum numbers have 15 characters.
 
 ## Filters
@@ -78,7 +82,7 @@ SpeciesID                               501
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol_toHITRAN.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol_toHITRAN.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -96,10 +100,10 @@ CrossSections                           0
 NCPUtrans                               4
 NCPUfiles                               1
 ChunkSize                               1000000
-RunMode                                 CPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when RunMode=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+Device                                  CPU                       # CPU(default) or GPU
+GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
@@ -133,7 +137,7 @@ SpeciesID                               81
 # File path #
 ReadPath                                /mnt/data/exomolhr/exomolhr_results/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/NO_ExoMolHR_toHITRAN.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/NO_ExoMolHR_toHITRAN.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -151,10 +155,10 @@ CrossSections                           0
 NCPUtrans                               1
 NCPUfiles                               1
 ChunkSize                               100000
-RunMode                                 CPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when RunMode=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+Device                                  CPU                       # CPU(default) or GPU
+GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 
 
 # Conversion #
@@ -182,7 +186,7 @@ Dataset                                 NIST
 # File path #
 ReadPath                                /mnt/data/exoatom/exoatom_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/Li_ExoAtom_toHITRAN.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/Li_ExoAtom_toHITRAN.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -200,10 +204,10 @@ CrossSections                           0
 NCPUtrans                               1
 NCPUfiles                               1
 ChunkSize                               10000
-RunMode                                 CPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when RunMode=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+Device                                  CPU                       # CPU(default) or GPU
+GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #
@@ -240,7 +244,7 @@ SpeciesID                               81
 # File path #
 ReadPath                                /home/jingxin/data/HITRAN/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/NO_HITRAN_toExoMol.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/NO_HITRAN_toExoMol.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -279,5 +283,5 @@ ConvThreshold(Y/N)                      N          1e-30          # If Y, defaul
 **Note**
 
 1. ExoMol format definition files `.def`, `.def.json`, and `.adef.json` (available at [exomol.com](https://www.exomol.com/)) provide the labels and formats of the quantum numbers for each species for reference.
-2. ExoMolHR format can be found from ExoMolHR website [https://www.exomol.com/exomolhr/](https://www.exomol.com/exomolhr/).
+2. ExoMolHR format can be found from ExoMolHR website [https://www.exomol.com/exomolhr/qn/](https://www.exomol.com/exomolhr/qn/).
 3. HITRAN2020 supplementary material ([link](https://hitran.org/media/refs/HITRAN_QN_formats.pdf)) provides the notation and format for quanta identifications for reference.

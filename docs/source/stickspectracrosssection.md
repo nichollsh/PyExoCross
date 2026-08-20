@@ -6,10 +6,21 @@ If you want to calculate stick spectra and cross sections simultaneously, you ca
 
 This calculation combines all parameters from both stick spectra and cross section calculations. For detailed descriptions of each parameter, please refer to [**Stick spectra**](`https://pyexocross.readthedocs.io/en/latest/stickspectra.html`) and [**Cross sections**](`https://pyexocross.readthedocs.io/en/latest/crosssections.html`).
 
+For ExoMol, ExoMolHR, and ExoAtom input, QN labels and formats are derived from the metadata by default. The `QNslabel` and `QNsformat` rows in examples are optional overrides for custom or legacy files.
+
 1. **Temperatures and Wavenumber/Wavelength Ranges**: Shared parameters for both calculations.
 2. **Pressures and Broadeners**: Applied to the cross section calculations.
 3. **Line profiles**: Used for cross section profiles.
 4. **Plotting**: Plots can be generated for both simultaneously using their respective configuration parameters (`PlotStickSpectra(Y/N)` and `PlotCrossSection(Y/N)`).
+
+***Note***
+In combined stick-spectra and cross-section runs, `WnWlUnit` is shared by both outputs. \
+With `wn cm-1`, the first column of both saved files is wavenumber in cm⁻¹. \
+With `wl nm` or `wl um`, the first column of both saved files is wavelength in that unit. \
+Cross-section `BinSize` uses the same unit as
+`WnWlUnit`. \
+The plotting options (`PlotStickSpectraWnWl` and
+`PlotCrossSectionWnWl`) only control plot x-axes.
 
 ### Example Configuration
 
@@ -25,7 +36,7 @@ SpeciesID                               666
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol.log    # Use None to disable log-file output
 
 
 # Functions #
@@ -43,10 +54,10 @@ CrossSections                           1
 NCPUtrans                               4
 NCPUfiles                               1
 ChunkSize                               1000000
-RunMode                                 CPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when RunMode=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+Device                                  CPU                       # CPU(default) or GPU
+GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 
 
 # Quantum numbers for conversion, stick spectra and cross sections #

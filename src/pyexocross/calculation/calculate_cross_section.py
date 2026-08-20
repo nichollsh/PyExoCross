@@ -27,7 +27,7 @@ from ..calculation.calcualte_line_profile import (
     BinnedVoigt_lorenz,
 )
 
-def _cross_section_gpu(kind, wn_grid, v, coef, cutoff, alpha=None, gamma=None, sigma=None, eta=None):
+def _cross_section_gpu(kind, wn_grid, v, coef, cutoff, alpha=None, gamma=None, sigma=None, hV=None, eta=None):
     """Dispatch cross-section calculation to GPU backend implementation."""
     if not using_gpu():
         return None
@@ -40,6 +40,7 @@ def _cross_section_gpu(kind, wn_grid, v, coef, cutoff, alpha=None, gamma=None, s
         alpha=alpha,
         gamma=gamma,
         sigma=sigma,
+        hV=hV,
         eta=eta,
         bin_size2=binSize2,
         inv_bin_size_pi_half=InvbinSizePIhalf,
@@ -330,7 +331,7 @@ def cross_section_HumlicekVoigt(wn_grid, v, alpha, gamma, coef, cutoff):
     xsec[start:end] += _xsec
     return xsec
 
-def cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff):
+def cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff):
     """
     Calculate cross sections using Pseudo-Voigt line profile.
 
@@ -342,10 +343,9 @@ def cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff):
         Wavenumber grid array, shape (n_points,)
     v : np.ndarray
         Transition wavenumber centers, shape (n_lines,)
-    alpha : np.ndarray
-        Doppler HWHM array, shape (n_lines,)
-    gamma : np.ndarray
-        Lorentzian HWHM array, shape (n_lines,)
+    hV : np.ndarray
+        Effective Voigt HWHM shared by the Gaussian and Lorentzian
+        components, shape (n_lines,)
     eta : np.ndarray
         Mixing parameter array (0 = pure Gaussian, 1 = pure Lorentzian), shape (n_lines,)
     coef : np.ndarray
@@ -365,8 +365,7 @@ def cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff):
             v,
             coef,
             cutoff,
-            alpha=alpha,
-            gamma=gamma,
+            hV=hV,
             eta=eta,
         )
         if gpu_xsec is not None:
@@ -380,7 +379,7 @@ def cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff):
         for i in range(start,end):
             idx = i-start
             dv = wn_grid[i] - v
-            PseudoVoigt = PseudoVoigt_profile(dv, alpha, gamma, eta)
+            PseudoVoigt = PseudoVoigt_profile(dv, hV, eta)
             _xsec[idx] = coef @ PseudoVoigt
     else:
         start = max(0,wn_grid.searchsorted(min(v)-cutoff)-1)
@@ -392,11 +391,10 @@ def cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff):
             filter = np.abs(dv) <= cutoff
             if filter.sum() > 0:
                 _dv = dv[filter]
-                _alpha = alpha[filter]
-                _gamma = gamma[filter]
+                _hV = hV[filter]
                 _eta = eta[filter]
                 _coef = coef[filter]
-                PseudoVoigt = PseudoVoigt_profile(_dv, _alpha, _gamma, _eta)
+                PseudoVoigt = PseudoVoigt_profile(_dv, _hV, _eta)
                 _xsec[idx] = _coef @ PseudoVoigt
     xsec[start:end] += _xsec   
     return xsec

@@ -16,6 +16,8 @@ import numpy as np
 import pandas as pd
 
 from .constants import num_cpus
+from .log import parse_logging_info
+from .qn_metadata import qn_labels_formats_from_states, qn_formats_for_labels
 from .utils import ensure_dir
 
 
@@ -262,17 +264,8 @@ def inp_para(inp_filepath):
     # File path
     read_path = (inp_df[col0.isin(['ReadPath'])][1].values[0] + '/').replace('//','/')
     save_path = (inp_df[col0.isin(['SavePath'])][1].values[0] + '/').replace('//','/')
-    logs_path_raw = inp_df[col0.isin(['LogFilePath'])][1].values[0]
-    logs_path_raw = logs_path_raw.replace('//','/').strip()
-    if logs_path_raw == '':
-        raise ValueError("LogFilePath cannot be empty.")
-    log_dir = os.path.dirname(logs_path_raw)
-    log_name = os.path.basename(logs_path_raw)
-    if log_dir == '':
-        log_dir = os.getcwd()
+    logs_path = parse_logging_info(inp_filepath)
     ensure_dir(save_path)
-    ensure_dir(log_dir + '/')
-    logs_path = os.path.join(log_dir, log_name)
     if database == 'ExoMolHR':
         dataset = _resolve_exomolhr_filepaths(read_path, molecule, isotopologue)
         data_info = [molecule, isotopologue, dataset]
@@ -292,9 +285,16 @@ def inp_para(inp_filepath):
     ncpufiles = int(inp_df[col0.isin(['NCPUfiles'])][1].iloc[0])
     chunk_size = int(inp_df[col0.isin(['ChunkSize'])][1].iloc[0])
     run_mode_rows = inp_df[col0.isin(['RunMode'])]
-    run_mode = str(run_mode_rows[1].iloc[0]).strip().upper() if not run_mode_rows.empty else 'CPU'
+    device_rows = inp_df[col0.isin(['Device'])]
+    if not run_mode_rows.empty and not device_rows.empty:
+        old_mode = str(run_mode_rows[1].iloc[0]).strip().upper()
+        new_mode = str(device_rows[1].iloc[0]).strip().upper()
+        if old_mode != new_mode:
+            raise ValueError('Device and RunMode must request the same CPU/GPU mode.')
+    mode_rows = device_rows if not device_rows.empty else run_mode_rows
+    run_mode = str(mode_rows[1].iloc[0]).strip().upper() if not mode_rows.empty else 'CPU'
     if run_mode not in ('CPU', 'GPU'):
-        raise ValueError("RunMode must be 'CPU' or 'GPU' in the input file.")
+        raise ValueError("Device/RunMode must be 'CPU' or 'GPU' in the input file.")
     gpu_backend_rows = inp_df[col0.isin(['GPUBackend'])]
     from pyexocross.gpu.base_gpu import normalize_gpu_backend
     if not gpu_backend_rows.empty:
@@ -330,7 +330,8 @@ def inp_para(inp_filepath):
             QNslabel_list = exomolhr_meta['qnslabel_list']
             QNsformat_list = exomolhr_meta['qnsformat_list']
         else:
-            raise ValueError("Please provide QNslabel and QNsformat in the input file.")
+            QNslabel_list = []
+            QNsformat_list = []
     else:
         QNslabel_list = []
         QNsformat_list = []  
@@ -354,9 +355,11 @@ def inp_para(inp_filepath):
         ConversionMinFreq = float(inp_df[col0.isin(['ConversionFrequncyRange'])][1].iloc[0])
         ConversionMaxFreq = float(inp_df[col0.isin(['ConversionFrequncyRange'])][2].iloc[0])
         GlobalQNLabel_list = list(inp_df[col0.isin(['GlobalQNLabel'])].iloc[0].dropna())[1:]
-        GlobalQNFormat_list = list(inp_df[col0.isin(['GlobalQNFormat'])].iloc[0].dropna())[1:]
+        global_qn_format_rows = inp_df[col0.isin(['GlobalQNFormat'])]
+        GlobalQNFormat_list = list(global_qn_format_rows.iloc[0].dropna())[1:] if not global_qn_format_rows.empty else []
         LocalQNLabel_list = list(inp_df[col0.isin(['LocalQNLabel'])].iloc[0].dropna())[1:]
-        LocalQNFormat_list = list(inp_df[col0.isin(['LocalQNFormat'])].iloc[0].dropna())[1:]
+        local_qn_format_rows = inp_df[col0.isin(['LocalQNFormat'])]
+        LocalQNFormat_list = list(local_qn_format_rows.iloc[0].dropna())[1:] if not local_qn_format_rows.empty else []
         
         # # Read GlobalQN / LocalQN labels and formats from input file
         # _gqn_rows = inp_df[col0.isin(['GlobalQNLabel'])]
@@ -507,7 +510,7 @@ def inp_para(inp_filepath):
                 else:
                     # No bracket means select all values for this QN
                     QNs_value.append([''])
-            QNs_format = [QNsformat_list[j] for j in [QNslabel_list.index(i) for i in QNs_label]]
+            QNs_format = []
         elif QNsFilterYN == 'N':
             QNsFilter = []
             QNs_label = []
@@ -736,10 +739,10 @@ def inp_para(inp_filepath):
                 unit_change = 1e7
             else:
                 raise ValueError("Please wirte the unit of wavelength in the input file: um or nm.")
-            if min_wnl == 0:
-                raise ValueError("Please set the minimum wavenumber greater than 0 in the input file.")
+            if min_wnl <= 0 or max_wnl <= 0:
+                raise ValueError("Please set the wavelength range greater than 0 in the input file.")
             wl_grid = np.linspace(min_wnl, max_wnl, N_point)
-            wn_grid = unit_change / wl_grid
+            wn_grid = np.sort(unit_change / wl_grid)
 
     else:
         bin_size = 'None'
@@ -777,8 +780,8 @@ def inp_para(inp_filepath):
             abundance = 1
             mass = def_df['isotopologue']['mass_in_Da']     # ExoMol mass (Dalton)
             try:
-                # check_uncertainty = def_df['dataset']['states']['uncertainty_description']
-                check_uncertainty = def_df['dataset']['states']['uncertainties_available']
+                states_dict = def_df['dataset']['states']
+                check_uncertainty = states_dict.get('uncertainties_available', states_dict.get('uncertainty_available', False))
             except:
                 check_uncertainty = False
             try:
@@ -841,8 +844,8 @@ def inp_para(inp_filepath):
         abundance = 1
         mass = def_df['species']['mass_in_Da']     # ExoAtom mass (Dalton)
         try:
-            # check_uncertainty = def_df['dataset']['states']['uncertainty_description']
-            check_uncertainty = def_df['dataset']['states']['uncertainty_available']
+            states_dict = def_df['dataset']['states']
+            check_uncertainty = states_dict.get('uncertainties_available', states_dict.get('uncertainty_available', False))
         except:
             check_uncertainty = False
         try:
@@ -939,6 +942,33 @@ def inp_para(inp_filepath):
         print(
             "Predissociation cross sections are enabled (PredissocXsec='Y') and a non-Lorentzian profile is selected.\n"
             "The program may take a long time because predissociative lifetimes must be calculated before the cross sections.\n"
+        )
+
+    if NeedQNs != 0 and not QNslabel_list and states_col and states_fmt:
+        QNslabel_list, QNsformat_list = qn_labels_formats_from_states(states_col, states_fmt)
+    if QNs_label and not QNs_format:
+        QNs_format = qn_formats_for_labels(
+            QNs_label,
+            QNslabel_list,
+            QNsformat_list,
+            states_col,
+            states_fmt,
+        )
+    if GlobalQNLabel_list and len(GlobalQNFormat_list) != len(GlobalQNLabel_list):
+        GlobalQNFormat_list = qn_formats_for_labels(
+            GlobalQNLabel_list,
+            QNslabel_list,
+            QNsformat_list,
+            states_col,
+            states_fmt,
+        )
+    if LocalQNLabel_list and len(LocalQNFormat_list) != len(LocalQNLabel_list):
+        LocalQNFormat_list = qn_formats_for_labels(
+            LocalQNLabel_list,
+            QNslabel_list,
+            QNsformat_list,
+            states_col,
+            states_fmt,
         )
             
     return (database, data_info, read_path, save_path, logs_path,

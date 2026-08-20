@@ -141,6 +141,7 @@ note/
 .input/
 .output/
 output/
+.pyexocross_cache/
 
 opacity_comparison*.png
 opacity_comparison*.pdf

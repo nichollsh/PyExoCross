@@ -32,6 +32,7 @@ PI = np.pi
 hc = h * c
 ln22 = np.log(2) * 2
 sinPI = np.sin(np.pi)
+Sqrt2 = np.sqrt(2)
 SqrtPI = np.sqrt(np.pi)
 Sqrtln2 = np.sqrt(np.log(2))
 OneminSqrtPIln2 = 1 - np.sqrt(np.pi * np.log(2))

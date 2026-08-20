@@ -9,7 +9,7 @@ from functools import partial
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pyexocross.base.utils import Timer, ensure_dir
 from pyexocross.base.log import (
     log_tqdm, 
@@ -22,6 +22,7 @@ from pyexocross.base.large_file import (
     is_large_trans_file,
     read_trans_chunks,
     process_large_chunks,
+    sourcename,
 )
 from pyexocross.base.constants import MAX_LARGE_FILE_WORKERS
 from pyexocross.calculation.calculate_para import cal_v
@@ -43,6 +44,38 @@ from pyexocross.process.stick_xsec_filepath import stick_spectra_filepath
 from pyexocross.database import get_part_transfiles
 from pyexocross.process.filter_qn import QNfilter_linelist
 from pyexocross.plot.plot_stick_spectra import plot_stick_spectra
+
+
+def stickcachecolumns():
+    """Return state-derived cache columns needed by the current stick run."""
+    from pyexocross.core import NLTEMethod, QNsFilter, QNs_label, UncFilter
+
+    columns = ["E'", 'E"', "g'", 'g"', "J'", 'J"', 'v']
+    if UncFilter != 'None':
+        columns.extend(["unc'", 'unc"'])
+    if NLTEMethod == 'T':
+        columns.extend(["Evib'", 'Evib"', "Erot'", 'Erot"'])
+    elif NLTEMethod == 'D':
+        columns.extend(["nvib'", 'nvib"'])
+    elif NLTEMethod == 'P':
+        columns.extend(["pop'", 'pop"'])
+    if QNsFilter != []:
+        for label in QNs_label:
+            columns.extend([label + "'", label + '"'])
+    return list(dict.fromkeys(columns))
+
+def stick_spectra_qn_output_columns(columns, col_main, qns_filter, qns_label):
+    """Return only the QN columns requested by the QN filter."""
+    if qns_filter == []:
+        return []
+    qn_cols = []
+    for suffix in ("'", '"'):
+        for label in qns_label:
+            col = label + suffix
+            if col in columns and col not in col_main:
+                qn_cols.append(col)
+    return list(dict.fromkeys(qn_cols))
+
 
 # Stick Spectra
 # Process LTE or NLTE linelist
@@ -78,13 +111,15 @@ def process_exomol_stick_spectra_chunk(states_part_df,T_list,Tvib_list,Trot_list
     from pyexocross.core import ( 
         min_wnl,
         max_wnl,
+        min_wn,
+        max_wn,
         QNsFilter,
         QNs_value,
         QNs_label,
         abs_emi,
         NLTEMethod,
-        abundance,
         threshold,
+        UncFilter,
     )
     # Optimized: use indexed lookup instead of two merges to reduce memory
     # If temp_idx is provided, process only that temperature to save memory
@@ -93,42 +128,60 @@ def process_exomol_stick_spectra_chunk(states_part_df,T_list,Tvib_list,Trot_list
     if isinstance(trans_part_df, dd.DataFrame):
         trans_part_df = trans_part_df.compute()
     
-    # Set index for fast lookup (more memory efficient than merge)
-    states_indexed = states_part_df.set_index('id')
-    
-    # Filter trans_df to only include transitions where both states exist
-    valid_mask = trans_part_df['uid'].isin(states_indexed.index) & trans_part_df['lid'].isin(states_indexed.index)
-    trans_part_df = trans_part_df[valid_mask]
-    
-    if len(trans_part_df) == 0:
-        states_cols = [col for col in states_part_df.columns if col != 'id']
-        u_cols = [col + "'" for col in states_cols]
-        l_cols = [col + '"' for col in states_cols]
-        combined_cols = ['A'] + u_cols + l_cols
+    required = {"E'", 'E"', "g'", 'g"', "J'", 'J"', 'v'}
+    if UncFilter != 'None':
+        required.update({"unc'", 'unc"'})
+    if NLTEMethod == 'T':
+        required.update({"Evib'", 'Evib"', "Erot'", 'Erot"'})
+    elif NLTEMethod == 'D':
+        required.update({"nvib'", 'nvib"'})
+    elif NLTEMethod == 'P':
+        required.update({"pop'", 'pop"'})
+    if QNsFilter != []:
+        for label in QNs_label:
+            required.update({label + "'", label + '"'})
+
+    if required.issubset(trans_part_df.columns):
+        stick_spectra_df = trans_part_df.copy()
+        if UncFilter != 'None':
+            stick_spectra_df = stick_spectra_df[
+                (stick_spectra_df["unc'"].astype(float) <= UncFilter)
+                & (stick_spectra_df['unc"'].astype(float) <= UncFilter)
+            ]
+    else:
+        if states_part_df is None:
+            raise ValueError('Range transition cache is missing required state columns.')
+        states_indexed = states_part_df.set_index('id')
+        valid_mask = (
+            trans_part_df['uid'].isin(states_indexed.index)
+            & trans_part_df['lid'].isin(states_indexed.index)
+        )
+        trans_part_df = trans_part_df[valid_mask]
+        u_states = states_indexed.loc[trans_part_df['uid']].reset_index(drop=True)
+        l_states = states_indexed.loc[trans_part_df['lid']].reset_index(drop=True)
+        u_states.columns = [col + "'" for col in u_states.columns]
+        l_states.columns = [col + '"' for col in l_states.columns]
+        stick_spectra_df = pd.concat([
+            trans_part_df[['A']].reset_index(drop=True),
+            u_states,
+            l_states,
+        ], axis=1)
+        stick_spectra_df['v'] = cal_v(
+            stick_spectra_df["E'"].values,
+            stick_spectra_df['E"'].values,
+        )
+    if len(stick_spectra_df) == 0:
         col_main = ['v','S',"J'","E'",'J"','E"']
-        col_qn = [col for col in combined_cols if col not in col_main]
-        col_stick_spectra = col_main + col_qn
-        return pd.DataFrame(columns=col_stick_spectra)
-    
-    # Get upper and lower state data using vectorized lookup
-    u_states = states_indexed.loc[trans_part_df['uid']].reset_index(drop=True)
-    l_states = states_indexed.loc[trans_part_df['lid']].reset_index(drop=True)
-    
-    # Rename columns with suffixes (id column is already dropped by reset_index)
-    u_states.columns = [col + "'" for col in u_states.columns]
-    l_states.columns = [col + '"' for col in l_states.columns]
-    
-    # Combine trans and states data
-    stick_spectra_df = pd.concat([
-        trans_part_df[['A']].reset_index(drop=True),
-        u_states,
-        l_states
-    ], axis=1)
-    
-    stick_spectra_df['v'] = cal_v(stick_spectra_df["E'"].values, stick_spectra_df['E"'].values)
+        col_qn = stick_spectra_qn_output_columns(
+            stick_spectra_df.columns,
+            col_main,
+            QNsFilter,
+            QNs_label,
+        )
+        return pd.DataFrame(columns=col_main + col_qn)
     # Filter out transitions where Ep < Epp (v < 0), skip invalid line list entries
     stick_spectra_df = stick_spectra_df[stick_spectra_df['v'] >= 0]
-    stick_spectra_df = stick_spectra_df[stick_spectra_df['v'].between(min_wnl, max_wnl)]
+    stick_spectra_df = stick_spectra_df[stick_spectra_df['v'].between(min_wn, max_wn)]
     if len(stick_spectra_df) != 0 and QNsFilter != []:
         stick_spectra_df = QNfilter_linelist(stick_spectra_df, QNs_value, QNs_label)
     num = len(stick_spectra_df)
@@ -153,7 +206,7 @@ def process_exomol_stick_spectra_chunk(states_part_df,T_list,Tvib_list,Trot_list
         raise ValueError("Please choose one non-LTE method from: 'T', 'D' or 'P'.")
     stick_spectra_df.drop(columns=col_list, inplace=True)
     col_main = ['v','S',"J'","E'",'J"','E"']
-    col_qn = [col for col in stick_spectra_df.columns if col not in col_main]
+    col_qn = stick_spectra_qn_output_columns(stick_spectra_df.columns, col_main, QNsFilter, QNs_label)
     col_stick_spectra = col_main + col_qn
     stick_spectra_df = stick_spectra_df[col_stick_spectra]  
     return stick_spectra_df
@@ -188,12 +241,17 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
         Combined stick spectra DataFrame from all chunks
     """   
     from pyexocross.core import ncputrans
-    trans_filename = trans_filepath.split('/')[-1]
-    print('Processeing transitions file:', trans_filename)
+    trans_filename = sourcename(trans_filepath)
+    print('Processing transitions file:', trans_filename)
     use_cols = [0,1,2]
     use_names = ['uid','lid','A']
     large_file = is_large_trans_file(trans_filepath)
-    trans_reader = read_trans_chunks(trans_filepath, use_cols, use_names)
+    trans_reader = read_trans_chunks(
+        trans_filepath,
+        use_cols,
+        use_names,
+        extracols=stickcachecolumns(),
+    )
     desc = 'Processing ' + trans_filename + (' (limited streaming)' if large_file else '')
     zero_factory = lambda: pd.DataFrame(columns=['v','S',"J'","E'",'J"','E"'])
     def combine_fn(results):
@@ -223,11 +281,27 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
             with ThreadPoolExecutor(max_workers=ncputrans) as trans_executor:
                 futures = [trans_executor.submit(process_exomol_stick_spectra_chunk, states_part_df, T_list, Tvib_list, Trot_list, Q_arr, chunk, temp_idx)
                            for chunk in log_tqdm(trans_chunks, desc=desc)]
-                stick_spectra_df = combine_fn([future.result() for future in log_tqdm(futures, desc='Combining '+trans_filename)])
+                completed = as_completed(futures)
+                results = [
+                    future.result()
+                    for future in log_tqdm(
+                        completed,
+                        total=len(futures),
+                        desc='Calculating chunks ' + trans_filename,
+                    )
+                ]
+                stick_spectra_df = combine_fn(results)
     return stick_spectra_df
 
 # Stick spectra for ExoMol database
-def save_exomol_stick_spectra(states_part_df, T_list, Tvib_list, Trot_list, Q_arr):
+def save_exomol_stick_spectra(
+    states_part_df,
+    T_list,
+    Tvib_list,
+    Trot_list,
+    Q_arr,
+    trans_sources=None,
+):
     """
     Main function to calculate and save stick spectra for ExoMol database.
 
@@ -259,6 +333,8 @@ def save_exomol_stick_spectra(states_part_df, T_list, Tvib_list, Trot_list, Q_ar
         database,
         min_wnl,
         max_wnl,
+        min_wn,
+        max_wn,
         UncFilter,
         threshold,
         NLTEMethod,
@@ -268,30 +344,35 @@ def save_exomol_stick_spectra(states_part_df, T_list, Tvib_list, Trot_list, Q_ar
         wn_wl,
         wn_wl_unit,
         PlotStickSpectraYN,
+        output,
         ncpufiles,
         ncputrans,
     )
-    print('Calculate stick spectra.')  
+    print('\nCalculate stick spectra.')  
     print_stick_info('cm⁻¹', 'cm/molecule')
     tot = Timer()
     tot.start()
     # Q = read_exomol_pf(read_path, T)
-    states_part_df_ss = states_part_df.copy()
-    if check_uncertainty == True:
+    states_part_df_ss = None if states_part_df is None else states_part_df.copy()
+    if check_uncertainty == True and states_part_df_ss is not None:
         states_part_df_ss.drop(columns=['unc'], inplace=True)
-    if check_lifetime == True or predissocYN == 'Y':
+    if states_part_df_ss is not None and (check_lifetime == True or predissocYN == 'Y'):
         try:
             states_part_df_ss.drop(columns=['tau'], inplace=True)
         except:
             pass
-    if check_gfactor == True:
+    if check_gfactor == True and states_part_df_ss is not None:
         try:
             states_part_df_ss.drop(columns=['gfac'], inplace=True)
         except:
             pass
     
     print('\nReading transitions and calculating stick spectra ...')    
-    trans_filepaths = get_part_transfiles(read_path, data_info)
+    trans_filepaths = (
+        trans_sources
+        if trans_sources is not None
+        else get_part_transfiles(read_path, data_info, min_wn, max_wn)
+    )
     
     # Process each temperature separately to save memory
     QNsfmf = (str(QNs_format).replace("'","").replace(",","").replace("[","").replace("]","")
@@ -334,7 +415,7 @@ def save_exomol_stick_spectra(states_part_df, T_list, Tvib_list, Trot_list, Q_ar
         any_results = True
         
         # Plot stick spectra for this temperature
-        if PlotStickSpectraYN == 'Y':
+        if PlotStickSpectraYN == 'Y' and output != 'memory':
             plot_stick_spectra(stick_spectra_df, T=T, Tvib=Tvib, Trot=Trot)
             
         if wn_wl == 'WN':
@@ -351,24 +432,37 @@ def save_exomol_stick_spectra(states_part_df, T_list, Tvib_list, Trot_list, Q_ar
         else:
             raise ValueError('Please wirte the unit of wavelength in the input file: um or nm.')      
         stick_spectra_df.sort_values(by=['v'], ascending=True, inplace=True) 
+        from pyexocross.base.result import Condition, record, saving_enabled
+        axis = 'wavenumber' if wn_wl == 'WN' else 'wavelength'
+        record(
+            'stick_spectra',
+            stick_spectra_df,
+            {axis: stick_spectra_df['v'].to_numpy()},
+            {axis: 'cm-1' if wn_wl == 'WN' else wn_wl_unit,
+             'data': 'cm/molecule'},
+            Condition(T, None, Tvib, Trot),
+        )
         
         # Save file for this temperature (shared naming)
-        ss_path = stick_spectra_filepath(ss_folder, T, Tvib, Trot, str_min_wnl, str_max_wnl, unit_fn,
-                                         data_info, wn_wl, UncFilter, threshold, database, abs_emi, LTE_NLTE, photo,
-                                         NLTEMethod)
-        
-        ts = Timer()    
-        ts.start()
-        save_large_txt(ss_path, stick_spectra_df, fmt=ss_fmt)
-        ts.end()
-        ss_file_count += 1
+        ss_path = None
+        if saving_enabled():
+            ss_path = stick_spectra_filepath(
+                ss_folder, T, Tvib, Trot, str_min_wnl, str_max_wnl, unit_fn,
+                data_info, wn_wl, UncFilter, threshold, database, abs_emi,
+                LTE_NLTE, photo, NLTEMethod,
+            )
+            ts = Timer().start()
+            save_large_txt(ss_path, stick_spectra_df, fmt=ss_fmt)
+            ts.end('save')
+            ss_file_count += 1
         print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, None, abs_emi, NLTEMethod, 'Stick spectra', ss_path)
         ss_col = list(stick_spectra_df.columns)
         
         # Clear memory
         del stick_spectra_df
         
-    tot.end()
+    from pyexocross.base.result import end_calculation
+    end_calculation(tot)
     print('\nFinished reading transitions and calculating stick spectra!\n')
     
     if not any_results:
@@ -381,5 +475,8 @@ def save_exomol_stick_spectra(states_part_df, T_list, Tvib_list, Trot_list, Q_ar
         ss_col_list = ['Wavelength'] + ss_col[1:]
         ss_fmt_list = ['%15.8E'] + ss_fmt.split()[1:]
     print_file_info('Stick spectra', ss_col_list, ss_fmt_list)
-    print(f'All {ss_file_count} stick spectra files have been saved!\n')
+    if saving_enabled():
+        print(f'All {ss_file_count} stick spectra files have been saved!\n')
+    else:
+        print(f'All {ntemp} stick spectra results retained in memory!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

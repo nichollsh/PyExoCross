@@ -7,11 +7,10 @@ import re
 import bz2
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pyexocross.base.utils import Timer, ensure_dir
-from pyexocross.base.log import print_file_info
-from pyexocross.base.large_file import read_trans_chunks
+from pyexocross.base.log import log_tqdm, print_file_info
+from pyexocross.base.large_file import read_trans_chunks, sourcename
 from pyexocross.calculation.calculate_lifetime import cal_lifetime
 from pyexocross.database.load_exomol import get_transfiles
 
@@ -54,8 +53,8 @@ def process_exomol_lifetime(states_df, trans_filepath):
     from pyexocross.core import ncputrans  
 
     global _USE_THREAD_POOL
-    trans_filename = trans_filepath.split('/')[-1]
-    print('Processeing transitions file:', trans_filename)
+    trans_filename = sourcename(trans_filepath)
+    print('Processing transitions file:', trans_filename)
     use_cols = [0,1,2]
     use_names = ['uid','lid','A']
     trans_reader = read_trans_chunks(trans_filepath, use_cols, use_names)
@@ -66,8 +65,8 @@ def process_exomol_lifetime(states_df, trans_filepath):
     else:
         with _executor_context(max_workers=ncputrans) as trans_executor:
             futures = [trans_executor.submit(cal_lifetime, states_df, chunk)
-                        for chunk in tqdm(trans_chunks, desc=desc)]
-            lifetime = np.sum([future.result() for future in tqdm(futures, desc='Combining '+trans_filename)], axis=0)
+                        for chunk in log_tqdm(trans_chunks, desc=desc)]
+            lifetime = np.sum([future.result() for future in log_tqdm(futures, desc='Combining '+trans_filename)], axis=0)
     return lifetime
 
 def insert_exomol_lifetime_column(states_df, lifetime, states_col, states_fmt):
@@ -112,6 +111,34 @@ def insert_exomol_lifetime_column(states_df, lifetime, states_col, states_fmt):
     states_lifetime_df.insert(insert_at, 'tau', lifetime)     
     return (states_lifetime_df, states_lifetime_fmt)
 
+
+def energy_width12_format(values, max_precision=6):
+    """
+    Return a fixed-width E-column format that keeps values within 12 chars.
+    """
+    numeric = pd.to_numeric(values, errors='coerce')
+    finite = numeric[np.isfinite(numeric)]
+    if finite.empty:
+        return '%12.6f'
+    max_abs = float(finite.abs().max())
+    int_digits = len(str(int(np.floor(max_abs)))) if max_abs >= 1 else 1
+    if (finite < 0).any():
+        int_digits += 1
+    precision = max(0, min(max_precision, 11 - int_digits))
+    return f'%12.{precision}f'
+
+
+def adapt_energy_format(states_lifetime_df, states_lifetime_fmt):
+    """Adapt E format to preserve a total width of 12 characters."""
+    if 'E' not in states_lifetime_df.columns:
+        return states_lifetime_fmt
+    fmt = list(states_lifetime_fmt)
+    e_idx = list(states_lifetime_df.columns).index('E')
+    if e_idx < len(fmt):
+        fmt[e_idx] = energy_width12_format(states_lifetime_df['E'])
+    return fmt
+
+
 def convert_dtype_by_format(df, fmt_list):
     """
     Convert DataFrame column dtypes based on format strings.
@@ -141,7 +168,13 @@ def convert_dtype_by_format(df, fmt_list):
                 df[col] = df[col].astype('string')
     return df
 
-def save_exomol_lifetime(read_path, states_df, states_col, states_fmt):
+def save_exomol_lifetime(
+    read_path,
+    states_df,
+    states_col,
+    states_fmt,
+    trans_sources=None,
+):
     """
     Main function to calculate and save radiative lifetimes for ExoMol database.
 
@@ -160,49 +193,64 @@ def save_exomol_lifetime(read_path, states_df, states_col, states_fmt):
         Format strings for each column
     """
     np.seterr(divide='ignore', invalid='ignore')
-    print('Calculate lifetimes.')  
+    print('\nCalculate lifetimes.')  
     # Import legacy-style configuration variables from core (set via Config.to_globals()).
     from pyexocross.core import data_info, ncpufiles, save_path, CompressYN  # type: ignore
 
     t = Timer()
     t.start()
     print('Reading all transitions and calculating lifetimes ...')
-    trans_filepaths = get_transfiles(read_path, data_info)
+    trans_filepaths = (
+        trans_sources
+        if trans_sources is not None
+        else get_transfiles(read_path, data_info)
+    )
     # Process multiple files in parallel
     with _executor_context(max_workers=ncpufiles) as executor:
         # Submit reading tasks for each file
         futures = [executor.submit(process_exomol_lifetime, states_df, 
-                                   trans_filepath) for trans_filepath in tqdm(trans_filepaths)]
+                                   trans_filepath) for trans_filepath in log_tqdm(trans_filepaths)]
         lifetime_result = 1 / sum(np.array([future.result() for future in futures]))
         lifetime = np.array([f'{x:>12.4E}'.replace('INF','Inf') for x in lifetime_result])
-    t.end()
+    t.end('calculate')
     print('Finished reading all transitions and calculating lifetimes!\n')
 
-    print('Saving lifetimes into file ...')   
+    print('Preparing lifetime output ...')
     ts = Timer()    
     ts.start()  
     
     # Insert lifetime column into states_df
     (states_lifetime_df, states_lifetime_fmt) = insert_exomol_lifetime_column(states_df, lifetime, states_col, states_fmt)
+    states_lifetime_fmt = adapt_energy_format(states_lifetime_df, states_lifetime_fmt)
     states_lifetime_df = convert_dtype_by_format(states_lifetime_df, states_lifetime_fmt)
+    from pyexocross.base.result import record, saving_enabled
+    record(
+        'lifetime',
+        states_lifetime_df,
+        {'state_id': states_lifetime_df.iloc[:, 0].to_numpy()},
+        {'state_id': 'dimensionless', 'data': 's'},
+    )
 
-    lf_folder = save_path + 'lifetime/'
-    ensure_dir(lf_folder)
-
-    if CompressYN == 'Y':
-        lf_path = lf_folder + '__'.join(data_info[-2:]) + '.states.bz2'
-        with bz2.open(lf_path, 'wt') as f:
-            np.savetxt(f, states_lifetime_df, fmt=' '.join(states_lifetime_fmt))
-    else:
-        lf_path = lf_folder + '__'.join(data_info[-2:]) + '.states'
-        np.savetxt(lf_path, states_lifetime_df, fmt=' '.join(states_lifetime_fmt))
+    lf_path = None
+    if saving_enabled():
+        lf_folder = save_path + 'lifetime/'
+        ensure_dir(lf_folder)
+        if CompressYN == 'Y':
+            lf_path = lf_folder + '__'.join(data_info[-2:]) + '.states.bz2'
+            with bz2.open(lf_path, 'wt') as f:
+                np.savetxt(f, states_lifetime_df, fmt=' '.join(states_lifetime_fmt))
+        else:
+            lf_path = lf_folder + '__'.join(data_info[-2:]) + '.states'
+            np.savetxt(lf_path, states_lifetime_df, fmt=' '.join(states_lifetime_fmt))
         
-    ts.end()
+    ts.end('save' if lf_path else None)
     states_lifetime_cols = list(states_lifetime_df.columns)
     tau_idx = states_lifetime_cols.index('tau') 
     states_lifetime_cols = states_lifetime_cols[:tau_idx] + ['tau'] + states_lifetime_cols[tau_idx:]
     states_lifetime_fmt[tau_idx] = '%12.4E'
     print_file_info('Lifetimes', list(dict.fromkeys(states_lifetime_cols)), states_lifetime_fmt)
-    print('Lifetimes file has been saved:', lf_path, '\n') 
-    print('Lifetimes have been saved!\n')    
+    if lf_path is not None:
+        print('Lifetimes file has been saved:', lf_path, '\n')
+    else:
+        print('Lifetimes retained in memory.\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

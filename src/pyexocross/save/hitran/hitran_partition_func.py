@@ -1,19 +1,58 @@
-from pyexocross.save.exomol.exomol_partition_func import save_exomol_partition_func
+import numpy as np
+import pandas as pd
+
+from pyexocross.base.utils import Timer, ensure_dir
+from pyexocross.base.log import print_file_info
+from pyexocross.calculation.calculate_partition_func import cal_partition_func
+from pyexocross.process.hitran_states import hitran_state_arrays
 
 
-def save_hitran_partition_func(states_df, Ntemp, Tmax):
+def save_hitran_partition_func(hitran_df, Ntemp, Tmax):
     """
     Calculate and save partition functions for HITRAN database.
 
-    Wrapper function that calls the ExoMol partition function calculation.
+    Computes LTE partition functions at specified temperature intervals
+    directly from HITRAN linelist data and saves results in .pf format file.
 
     Parameters
     ----------
-    states_df : pd.DataFrame
-        States DataFrame with 'E' and 'g' columns
+    hitran_df : pd.DataFrame
+        HITRAN DataFrame with linelist data
     Ntemp : int
         Temperature step interval
     Tmax : int
         Maximum temperature in Kelvin
     """
-    return save_exomol_partition_func(states_df, Ntemp, Tmax)
+    # Import legacy-style configuration variables from core (set via Config.to_globals()).
+    from pyexocross.core import save_path, data_info
+
+    print('\nCalculate partition functions.')  
+    t = Timer()
+    t.start()
+    En, gn = hitran_state_arrays(hitran_df)
+    Ts = np.array(range(Ntemp, Tmax+1, Ntemp)) 
+    partition_func = np.array([cal_partition_func(En, gn, T) for T in Ts], dtype=float)
+    t.end('calculate')
+    print('Finished calculating partition functions!\n')
+
+    print('Preparing partition function output ...')
+    ts = Timer()    
+    ts.start()     
+    partition_func_df = pd.DataFrame()
+    partition_func_df['T'] = Ts
+    partition_func_df['Partition function'] = partition_func
+    from pyexocross.base.result import record, saving_enabled
+    record('partition_function', partition_func_df, {'temperature': Ts},
+           {'temperature': 'K', 'data': 'dimensionless'})
+    
+    pf_path = None
+    if saving_enabled():
+        pf_folder = save_path + 'partition/'
+        ensure_dir(pf_folder)
+        pf_path = pf_folder + '__'.join(data_info[-2:]) + '.pf'
+        np.savetxt(pf_path, partition_func_df, fmt="%8.1f %15.4f")
+    ts.end('save' if pf_path else None)
+    print_file_info('Partition functions', ['T', 'Partition function'], ['%8.1f', '%15.4f'])
+    print('Partition functions file has been saved:', pf_path, '\n') if pf_path else print('Partition functions retained in memory.\n')
+    print('Partition function calculation finished!\n')
+    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

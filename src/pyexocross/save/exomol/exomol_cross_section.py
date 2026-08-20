@@ -8,9 +8,8 @@ import os
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from tqdm import tqdm
 from functools import partial
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pyexocross.base.utils import Timer
 from pyexocross.base.log import (
     log_tqdm, 
@@ -20,10 +19,11 @@ from pyexocross.base.log import (
 )
 from pyexocross.base.large_file import (
     is_large_trans_file,
-    read_trans_chunks
+    read_trans_chunks,
+    sourcename,
 )
 from pyexocross.database import read_broad, get_part_transfiles
-from pyexocross.database.load_exomol import extract_broad
+from pyexocross.database.load_exomol import broad_required_line_columns, extract_broad
 from pyexocross.calculation.calculate_para import cal_v
 from pyexocross.calculation.calculate_intensity import (
     cal_abscoefs,
@@ -63,6 +63,44 @@ from pyexocross.calculation.calculate_cross_section import (
 from pyexocross.process.T_n_val import get_ntemp, get_temp_vals
 from pyexocross.process.S_for_LTE_NLTE_Ab_Em import S_for_LTE_NLTE_Ab_Em
 from pyexocross.plot.plot_cross_section import save_xsec_file_plot
+
+def numeric_columns(df, columns):
+    """Convert present columns to numeric values for line-shape calculations."""
+    for col in columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+    return df
+
+
+def crosscachecolumns(broad_dfs):
+    """Return state-derived cache columns needed by the current cross-section run."""
+    from pyexocross.core import (
+        NLTEMethod,
+        QNsFilter,
+        QNs_label,
+        UncFilter,
+        predissocYN,
+        profile,
+    )
+
+    columns = ["E'", 'E"', "g'", 'g"', "J'", 'J"', 'v']
+    if UncFilter != 'None':
+        columns.extend(["unc'", 'unc"'])
+    if predissocYN == 'Y' and 'VOI' in profile:
+        columns.append("tau'")
+    if NLTEMethod == 'T':
+        columns.extend(["Evib'", 'Evib"', "Erot'", 'Erot"'])
+    elif NLTEMethod == 'D':
+        columns.extend(["nvib'", 'nvib"'])
+    elif NLTEMethod == 'P':
+        columns.extend(["pop'", 'pop"'])
+    if QNsFilter != []:
+        for label in QNs_label:
+            columns.extend([label + "'", label + '"'])
+    candidates = columns + ["K'", 'K"', "k'", 'k"', "v'", 'v"']
+    columns.extend(broad_required_line_columns(broad_dfs, candidates))
+    return list(dict.fromkeys(columns))
+
 
 ## Line list for calculating cross sections
 def process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,
@@ -113,17 +151,19 @@ def process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list
         cutoff,
         min_wnl,
         max_wnl,
+        min_wn,
+        max_wn,
         QNsFilter,
         QNs_value,
         QNs_label,
         NLTEMethod,
         abs_emi,
-        abundance,
         predissocYN,
         profile,
         DopplerHWHMYN,
         LorentzianHWHMYN,
         threshold,
+        UncFilter,
         alpha_hwhm_colid,
         gamma_hwhm_colid,
         alpha_HWHM as config_alpha_HWHM,
@@ -142,38 +182,89 @@ def process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list
     if isinstance(trans_part_df, dd.DataFrame):
         trans_part_df = trans_part_df.compute()
     
-    # Set index for fast lookup (more memory efficient than merge)
-    states_indexed = states_part_df.set_index('id')
-    
-    # Filter trans_df to only include transitions where both states exist
-    valid_mask = trans_part_df['uid'].isin(states_indexed.index) & trans_part_df['lid'].isin(states_indexed.index)
-    trans_part_df = trans_part_df[valid_mask]
-    
-    if len(trans_part_df) == 0:
+    required = {"E'", 'E"', "g'", 'g"', "J'", 'J"', 'v'}
+    if UncFilter != 'None':
+        required.update({"unc'", 'unc"'})
+    if predissocYN == 'Y' and 'VOI' in profile:
+        required.add("tau'")
+    if NLTEMethod == 'T':
+        required.update({"Evib'", 'Evib"', "Erot'", 'Erot"'})
+    elif NLTEMethod == 'D':
+        required.update({"nvib'", 'nvib"'})
+    elif NLTEMethod == 'P':
+        required.update({"pop'", 'pop"'})
+    if QNsFilter != []:
+        for label in QNs_label:
+            required.update({label + "'", label + '"'})
+    availablelinecols = list(trans_part_df.columns)
+    if states_part_df is not None:
+        availablelinecols.extend(
+            column + suffix
+            for column in states_part_df.columns
+            if column != 'id'
+            for suffix in ("'", '"')
+        )
+    required.update(broad_required_line_columns(broad_dfs, availablelinecols))
+
+    if required.issubset(trans_part_df.columns):
+        st_df = trans_part_df.copy()
+        if UncFilter != 'None':
+            st_df = st_df[
+                (st_df["unc'"].astype(float) <= UncFilter)
+                & (st_df['unc"'].astype(float) <= UncFilter)
+            ]
+    else:
+        if states_part_df is None:
+            raise ValueError('Range transition cache is missing required state columns.')
+        states_indexed = states_part_df.set_index('id')
+        valid_mask = (
+            trans_part_df['uid'].isin(states_indexed.index)
+            & trans_part_df['lid'].isin(states_indexed.index)
+        )
+        trans_part_df = trans_part_df[valid_mask]
+        u_states = states_indexed.loc[trans_part_df['uid']].reset_index(drop=True)
+        l_states = states_indexed.loc[trans_part_df['lid']].reset_index(drop=True)
+        u_states.columns = [col + "'" for col in u_states.columns]
+        l_states.columns = [col + '"' for col in l_states.columns]
+        st_df = pd.concat([
+            trans_part_df[['A']].reset_index(drop=True),
+            u_states,
+            l_states,
+        ], axis=1)
+    if len(st_df) == 0:
         return np.zeros_like(wn_grid)
+    numeric_columns(
+        st_df,
+        [
+            'A',
+            "E'",
+            'E"',
+            "g'",
+            'g"',
+            "J'",
+            'J"',
+            "tau'",
+            'alpha_hwhm',
+            'gamma_hwhm',
+            "Evib'",
+            'Evib"',
+            "Erot'",
+            'Erot"',
+            "nvib'",
+            'nvib"',
+            "pop'",
+            'pop"',
+        ],
+    )
     
-    # Get upper and lower state data using vectorized lookup
-    u_states = states_indexed.loc[trans_part_df['uid']].reset_index(drop=True)
-    l_states = states_indexed.loc[trans_part_df['lid']].reset_index(drop=True)
-    
-    # Rename columns with suffixes (id column is already dropped by reset_index)
-    u_states.columns = [col + "'" for col in u_states.columns]
-    l_states.columns = [col + '"' for col in l_states.columns]
-    
-    # Combine trans and states data
-    st_df = pd.concat([
-        trans_part_df[['A']].reset_index(drop=True),
-        u_states,
-        l_states
-    ], axis=1)
-    
-    st_df['v'] = cal_v(st_df["E'"].values, st_df['E"'].values)
+    if 'v' not in st_df.columns:
+        st_df['v'] = cal_v(st_df["E'"].values, st_df['E"'].values)
     # Filter out transitions where Ep < Epp (v < 0), skip invalid line list entries
     st_df = st_df[st_df['v'] >= 0]
     if cutoff == 'None':
-        st_df = st_df[st_df['v'].between(min_wnl, max_wnl)]
+        st_df = st_df[st_df['v'].between(min_wn, max_wn)]
     else:
-        st_df = st_df[st_df['v'].between(min_wnl - cutoff, max_wnl + cutoff)]
+        st_df = st_df[st_df['v'].between(min_wn - cutoff, max_wn + cutoff)]
     if len(st_df) != 0 and QNsFilter != []:
         st_df = QNfilter_linelist(st_df, QNs_value, QNs_label)
 
@@ -197,24 +288,28 @@ def process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list
     else:
         extra_col = []
 
+    broad_match_col = broad_required_line_columns(broad_dfs, st_df.columns)
+    def _keep_cols(cols):
+        return list(dict.fromkeys(cols + broad_match_col))
+
     if predissocYN == 'Y' and 'VOI' in profile:
         if DopplerHWHMYN == 'U' and LorentzianHWHMYN == 'U':
-            st_df = st_df[['A','v',"g'","E'",'E"','J"',"tau'",'alpha_hwhm','gamma_hwhm']+extra_col]
+            st_df = st_df[_keep_cols(['A','v',"g'","E'",'E"','J"',"tau'",'alpha_hwhm','gamma_hwhm']+extra_col)]
         elif DopplerHWHMYN == 'U' and LorentzianHWHMYN != 'U':
-            st_df = st_df[['A','v',"g'","E'",'E"','J"',"tau'",'alpha_hwhm']+extra_col]
+            st_df = st_df[_keep_cols(['A','v',"g'","E'",'E"','J"',"tau'",'alpha_hwhm']+extra_col)]
         elif DopplerHWHMYN != 'U' and LorentzianHWHMYN == 'U':
-            st_df = st_df[['A','v',"g'","E'",'E"','J"',"tau'",'gamma_hwhm']+extra_col]
+            st_df = st_df[_keep_cols(['A','v',"g'","E'",'E"','J"',"tau'",'gamma_hwhm']+extra_col)]
         else:
-            st_df = st_df[['A','v',"g'","E'",'E"','J"',"tau'"]+extra_col]
+            st_df = st_df[_keep_cols(['A','v',"g'","E'",'E"','J"',"tau'"]+extra_col)]
     else:
         if DopplerHWHMYN == 'U' and LorentzianHWHMYN == 'U':
-            st_df = st_df[['A','v',"g'","E'",'E"','J"','alpha_hwhm','gamma_hwhm']+extra_col]
+            st_df = st_df[_keep_cols(['A','v',"g'","E'",'E"','J"','alpha_hwhm','gamma_hwhm']+extra_col)]
         elif DopplerHWHMYN == 'U' and LorentzianHWHMYN != 'U':
-            st_df = st_df[['A','v',"g'","E'",'E"','J"','alpha_hwhm']+extra_col]
+            st_df = st_df[_keep_cols(['A','v',"g'","E'",'E"','J"','alpha_hwhm']+extra_col)]
         elif DopplerHWHMYN != 'U' and LorentzianHWHMYN == 'U':
-            st_df = st_df[['A','v',"g'","E'",'E"','J"','gamma_hwhm']+extra_col]
+            st_df = st_df[_keep_cols(['A','v',"g'","E'",'E"','J"','gamma_hwhm']+extra_col)]
         else:
-            st_df = st_df[['A','v',"g'","E'",'E"','J"']+extra_col]
+            st_df = st_df[_keep_cols(['A','v',"g'","E'",'E"','J"']+extra_col)]
         
     num = len(st_df)
     if num > 0:
@@ -224,6 +319,7 @@ def process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list
         st_df.drop(columns=['A',"g'","E'",'E"'], inplace=True)
         if threshold != 'None':
             st_df = st_df[st_df['coef'] >= threshold]  
+        numeric_columns(st_df, ['v', 'coef', 'alpha_hwhm', 'gamma_hwhm', "tau'"])
         v = st_df['v'].values
         num = len(st_df)         
 
@@ -263,12 +359,12 @@ def process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list
                         gamma_default = float(broad_dfs[i]['gamma_L'][0])
                         n_air_default = float(broad_dfs[i]['n_air'][0])
                         gamma_L[i] = np.full(num, gamma_default, dtype=np.float64) * ratio[i]
-                        n_air[i] = np.full(num, n_air_default, dtype=np.float64) * ratio[i]
+                        n_air[i] = np.full(num, n_air_default, dtype=np.float64)
                     else:
                         (gammaL,nair) = extract_broad(broad_dfs[i], st_df)
                         # extract_broad returns pandas Series, convert to numpy array
                         gamma_L[i] = np.asarray(gammaL, dtype=np.float64) * ratio[i]
-                        n_air[i] = np.asarray(nair, dtype=np.float64) * ratio[i]
+                        n_air[i] = np.asarray(nair, dtype=np.float64)
                         # Ensure correct shape
                         if len(gamma_L[i]) != num:
                             raise ValueError(f"gamma_L[{i}] from extract_broad has length {len(gamma_L[i])}, expected {num}")
@@ -305,24 +401,24 @@ def process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list
                 xsec = cross_section_HumlicekVoigt(wn_grid, v, alpha, gamma, coef, cutoff)  
             elif profile_label == 'Thompson pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-                eta = PseudoThompsonVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)       
+                hV, eta = PseudoThompsonVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Kielkopf pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-                eta = PseudoKielkopfVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)       
+                hV, eta = PseudoKielkopfVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Olivero pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-                eta = PseudoOliveroVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)       
+                hV, eta = PseudoOliveroVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Liu-Lin pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-                eta = PseudoLiuLinVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff)       
+                hV, eta = PseudoLiuLinVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Rocco pseudo-Voigt':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
-                eta = PseudoRoccoVoigt(alpha, gamma)
-                xsec = cross_section_PseudoVoigt(wn_grid, v, alpha, gamma, eta, coef, cutoff) 
+                hV, eta = PseudoRoccoVoigt(alpha, gamma)
+                xsec = cross_section_PseudoVoigt(wn_grid, v, hV, eta, coef, cutoff)
             elif profile_label == 'Binned Doppler':
                 alpha = DopplerHWHM_alpha(num, alpha_HWHM, v, T)
                 xsec = cross_section_BinnedGaussian(wn_grid, v, alpha, coef, cutoff)        
@@ -392,9 +488,8 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
         wn_grid,
         ncputrans,
     )
-    trans_filename = trans_filepath.split('/')[-1]
-    print('')
-    print('Processeing transitions file:', trans_filename)
+    trans_filename = sourcename(trans_filepath)
+    print('Processing transitions file:', trans_filename)
     if DopplerHWHMYN == 'U' and LorentzianHWHMYN == 'U':
         use_cols = [0,1,2,alpha_hwhm_colid, gamma_hwhm_colid]
         use_names = ['uid','lid','A','alpha_hwhm', 'gamma_hwhm']
@@ -408,7 +503,12 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
         use_cols = [0,1,2]
         use_names = ['uid','lid','A']
     large_file = is_large_trans_file(trans_filepath)
-    trans_reader = read_trans_chunks(trans_filepath, use_cols, use_names)
+    trans_reader = read_trans_chunks(
+        trans_filepath,
+        use_cols,
+        use_names,
+        extracols=crosscachecolumns(broad_dfs),
+    )
     desc = 'Processing ' + trans_filename + (' (streaming)' if large_file else '')
     if large_file:
         print('Large transition file detected (>1 GB). Streaming chunks sequentially to reduce memory usage.')
@@ -430,12 +530,26 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
                                           broad,ratio,nbroad,broad_dfs,profile_label,chunk,temp_idx) 
                     for chunk in log_tqdm(trans_chunks, desc=desc)
                 ]
-                xsecs = np.sum([future.result() for future in log_tqdm(futures, desc='Combining '+trans_filename)], axis=0)
-    print('')
+                xsecs = np.zeros_like(wn_grid)
+                completed = as_completed(futures)
+                for future in log_tqdm(
+                    completed,
+                    total=len(futures),
+                    desc='Calculating chunks ' + trans_filename,
+                ):
+                    xsecs += future.result()
     return xsecs
 
 # Cross sections for ExoMol database
-def save_exomol_cross_section(states_part_df, T_list, Tvib_list, Trot_list, P_list, Q_arr):
+def save_exomol_cross_section(
+    states_part_df,
+    T_list,
+    Tvib_list,
+    Trot_list,
+    P_list,
+    Q_arr,
+    trans_sources=None,
+):
     """
     Main function to calculate and save cross sections for ExoMol database.
 
@@ -466,13 +580,15 @@ def save_exomol_cross_section(states_part_df, T_list, Tvib_list, Trot_list, P_li
         UncFilter,
         min_wnl,
         max_wnl,
+        min_wn,
+        max_wn,
         data_info,
         wn_grid,
         database,
         ncpufiles,
         wn_wl,
     )
-    print('Calculate cross sections.')
+    print('\nCalculate cross sections.')
     tot = Timer()
     tot.start()
     broad, ratio, nbroad, broad_dfs = read_broad(read_path)
@@ -505,7 +621,11 @@ def save_exomol_cross_section(states_part_df, T_list, Tvib_list, Trot_list, P_li
                     'cm⁻¹', 'cm⁻¹/(molecule cm⁻²)', broad, ratio)
     
     print('Reading transitions and calculating cross sections ...')    
-    trans_filepaths = get_part_transfiles(read_path, data_info, min_wnl, max_wnl)
+    trans_filepaths = (
+        trans_sources
+        if trans_sources is not None
+        else get_part_transfiles(read_path, data_info, min_wn, max_wn)
+    )
     
     # Process each (T, P) combination separately to save memory
     any_results = False
@@ -563,7 +683,8 @@ def save_exomol_cross_section(states_part_df, T_list, Tvib_list, Trot_list, P_li
             # Clear memory
             del xsec
     
-    tot.end()
+    from pyexocross.base.result import end_calculation
+    end_calculation(tot)
     print('\nFinished reading transitions and calculating cross sections!\n')
     
     if not any_results:
@@ -572,5 +693,9 @@ def save_exomol_cross_section(states_part_df, T_list, Tvib_list, Trot_list, P_li
         print_file_info('Cross sections', ['Wavenumber', 'Cross section'], ['%15.6f', '%15.8E'])
     else:
         print_file_info('Cross sections', ['Wavelength', 'Cross section'], ['%15.8E', '%15.8E'])
-    print(f'All {xsec_file_count} cross sections files have been saved!\n')
+    from pyexocross.base.result import saving_enabled
+    if saving_enabled():
+        print(f'All {xsec_file_count} cross sections files have been saved!\n')
+    else:
+        print(f'All {xsec_file_count} cross section results retained in memory!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')

@@ -102,7 +102,8 @@ File path section records the file path for both reading and saving.
 
 `ReadPath` and `SavePath` are folder paths and should start with `/`, but don't need to end with `/`.
 
-`LogFilePath` is the file path of the log file, not the folder path.
+`LogFilePath` is the file path of the log file, not the folder path. Set it to
+`None` to disable log-file output. `None` is case-insensitive.
 
 &#x2705; /aaa/bbb/ccc
 
@@ -151,7 +152,21 @@ File path section records the file path for both reading and saving.
 
 `SavePath` is the folder path for saving all results obtained by the PyExoCross program.
 
-`LogFilePath` is the file path of the log file, the program can record the log output automatically.
+`LogFilePath` controls log-file output. Give a valid file path to record the
+run, or use `None` to disable logging.
+
+`Verbose` optionally controls normal terminal output. Use `True` to keep the
+current display behaviour or `False` to keep the terminal quiet. When
+`Verbose` is `False`, configured log-file output is still written.
+
+The two settings are independent:
+
+| `LogFilePath` | `Verbose` | Behaviour |
+|---|---:|---|
+| Valid path | `True` | Show normal terminal output and write the log |
+| Valid path | `False` | Keep the terminal quiet and write the log |
+| `None` | `True` | Show normal terminal output without a log file |
+| `None` | `False` | Keep the terminal quiet without a log file |
 
 *Example*
 
@@ -159,7 +174,9 @@ File path section records the file path for both reading and saving.
 # File path #
 ReadPath                                /mnt/data/exomol/exomol3_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/MgH_ExoMol.log    # Use None to disable log-file output
+
+Verbose                                 True
 ```
 
 **For ExoMolHR database**
@@ -184,6 +201,10 @@ However, users can also rename the CSV filenames in any formats as long as `Isot
 
 &#x2705; `Molecule`__`Isotopologue`__T.csv
 
+&#x2705; `Molecule`__`Isotopologue`__T__WNmin-WNmax__Smin.csv
+
+**Note**: This folder should contain only one .csv file.
+
 ```
 └── exomolhr_results
            ├── C2H2
@@ -196,7 +217,7 @@ However, users can also rename the CSV filenames in any formats as long as `Isot
            ├── NO
            │     └── 14N-16O
            │             ├── 14N-16O__XABC.pf
-           │             └── 20260311080614__14N-16O__1000K.csv
+           │             └── NO__14N-16O__T500__0-1000__Smin1e-30.csv
            ├── MgH
            │     ├── 24Mg-1H
            │     │       ├── 24Mg-1H__XAB.pf
@@ -213,7 +234,7 @@ However, users can also rename the CSV filenames in any formats as long as `Isot
 
 `SavePath` is the folder path for saving all results obtained by the PyExoCross program.
 
-`LogFilePath` is the file path of the log file, the program can record the log output automatically.
+`LogFilePath` accepts a log file path or `None` to disable file logging.
 
 *Example*
 
@@ -221,7 +242,8 @@ However, users can also rename the CSV filenames in any formats as long as `Isot
 # File path #
 ReadPath                                /mnt/data/exomolhr/exomolhr_results/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/NO_ExoMolHR.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/NO_ExoMolHR.log    # Use None to disable log-file output
+
 ```
 
 **For ExoAtom database**
@@ -234,7 +256,7 @@ LogFilePath                             /home/jingxin/data/pyexocross/log/NO_Exo
 
 `SavePath` is the folder path for saving all results obtained by the PyExoCross program.
 
-`LogFilePath` is the file path of the log file, the program can record the log output automatically.
+`LogFilePath` accepts a log file path or `None` to disable file logging.
 
 ```
 └── exoatom_data
@@ -272,7 +294,8 @@ LogFilePath                             /home/jingxin/data/pyexocross/log/NO_Exo
 # File path #
 ReadPath                                /mnt/data/exoatom/exoatom_data/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/Li_NIST.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/Li_NIST.log    # Use None to disable log-file output
+
 ```
 
 **For HITRAN and HITEMP databases**
@@ -285,7 +308,7 @@ LogFilePath                             /home/jingxin/data/pyexocross/log/Li_NIS
 
 `SavePath` is the folder path for saving all results obtained by the PyExoCross program.
 
-`LogFilePath` is the file path of the log file, the program can record the log output automatically.
+`LogFilePath` accepts a log file path or `None` to disable file logging.
 
 ```
 └── HITRAN
@@ -315,7 +338,8 @@ LogFilePath                             /home/jingxin/data/pyexocross/log/Li_NIS
 # File path #
 ReadPath                                /home/jingxin/data/HITRAN/
 SavePath                                /home/jingxin/data/pyexocross/
-LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_HITRAN.log
+LogFilePath                             /home/jingxin/data/pyexocross/log/CO2_HITRAN.log    # Use None to disable log-file output
+
 ```
 
 ## Functions
@@ -328,7 +352,7 @@ In current version, *PyExoCross* can convert data format between the ExoMol (Exo
 
 If users use `.inp` input files:
 
-*PyExoCross* provides computations of cooling function, oscillator strengths, LTE and non-LTE stick spectra and cross sections for data from the HITRAN format databases. If you want to use the other functions, please convert the data format from the HITRAN format to the ExoMol format at first and then treat the data as the ExoMol data to use *PyExoCross*. 
+*PyExoCross* can calculate partition functions, specific heats, cooling functions, oscillator strengths, LTE and non-LTE stick spectra and cross sections directly for data from the HITRAN format databases. Lifetimes still require HITRAN data to be converted to the ExoMol format first and then treated as ExoMol data in *PyExoCross*. 
 
 If users use Python package:
 
@@ -369,9 +393,9 @@ The program will run on different cores together.
 
 `ChunkSize`: The program splits each transitions file to many chunks when reading and calculating. `ChunkSize` is the size of each chunk.
 
-`RunMode`: Choose to run the program in CPU or GPU mode.
+`Device` or `RunMode`: Choose to run the program in CPU or GPU mode.
 
-`GPUBackend`: GPU backend selection (only used when `RunMode=GPU`):
+`GPUBackend`: GPU backend selection (only used when `Device=GPU`):
 
 - `'AUTO'` (recommended): `PyTorch-CUDA -> CuPy-CUDA -> MPS -> CPU fallback`
 - `'CUDA'`: `PyTorch-CUDA -> CuPy-CUDA -> MPS -> CPU fallback`
@@ -411,10 +435,10 @@ Some suggestions on setting the number of `NCPUtrans` and `NCPUfiles`.
 NCPUtrans                               2
 NCPUfiles                               4
 ChunkSize                               500000
-RunMode                                 CPU                       # CPU(default) or GPU
+Device                                  CPU                       # CPU(default) or GPU
 GPUBackend                              AUTO                      # AUTO(default): PyTorch-CUDA -> CuPy-CUDA -> MPS -> CPU fallback
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 ```
 
 
@@ -423,16 +447,16 @@ GPUBatchGrid                            256                       # GPU grid-bat
 NCPUtrans                               8
 NCPUfiles                               1
 ChunkSize                               1000000
-RunMode                                 GPU                       # CPU(default) or GPU
+Device                                  GPU                       # CPU(default) or GPU
 GPUBackend                              AUTO                      # AUTO(default): PyTorch-CUDA -> CuPy-CUDA -> MPS -> CPU fallback
-GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when RunMode=GPU)
+GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
+GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
 ```
 
 ```bash
 # CUDA policy (NVIDIA)
 # Priority: PyTorch-CUDA -> CuPy-CUDA -> MPS -> CPU fallback
-RunMode                                 GPU
+Device                                  GPU
 GPUBackend                              CUDA
 GPUBatchLines                           8192
 GPUBatchGrid                            256
@@ -440,7 +464,7 @@ GPUBatchGrid                            256
 
 ```bash
 # Force PyTorch CUDA only
-RunMode                                 GPU
+Device                                  GPU
 GPUBackend                              PyTorch-CUDA
 GPUBatchLines                           8192
 GPUBatchGrid                            256
@@ -448,7 +472,7 @@ GPUBatchGrid                            256
 
 ```bash
 # Force CuPy CUDA only
-RunMode                                 GPU
+Device                                  GPU
 GPUBackend                              CuPy-CUDA
 GPUBatchLines                           8192
 GPUBatchGrid                            256
@@ -456,7 +480,7 @@ GPUBatchGrid                            256
 
 ```bash
 # Force MPS (Apple Silicon)
-RunMode                                 GPU
+Device                                  GPU
 GPUBackend                              MPS
 GPUBatchLines                           8192
 GPUBatchGrid                            256
@@ -464,10 +488,17 @@ GPUBatchGrid                            256
 
 ## Quantum numbers
 
-Please provide the labels `QNslabel` and formats `QNsformat` of the quantum numbers when you use *PyExoCross* to convert data format, calculate stick spectra or cross sections if you need the quantum filter.
+For ExoMol and ExoAtom input, *PyExoCross* reads the quantum number labels and formats from the definition metadata files (`.def.json`, `.def`, or `.adef.json`) when they are needed for data conversion, stick spectra, cross sections, or quantum number filters. \
+For ExoMolHR input, *PyExoCross* reads the quantum number labels and formats from the default metadata automatically.
 
-* The definition files `.def`, `.def.json`, and `.adef.json` of ExoMol and ExoAtom databases (available at [exomol.com](https://www.exomol.com/)) provides the labels and formats of the quantum numbers for each species for reference.
-* HITRAN2020 supplementary material ([link](https://hitran.org/media/refs/HITRAN_QN_formats.pdf)) provides the notation and format for quanta identifications for reference.
+* Metadata labels with a namespace are shortened before use, for example `Herzberg:n1` is used as `n1` and `qn:configuration` is used as `configuration`.
+* Optional non-quantum-number state columns such as uncertainty, lifetime, and oscillator strength are not added to the automatic quantum number list.
+* `QNslabel` and `QNsformat` are optional overrides for custom or legacy files. Standard ExoMol, ExoMolHR, and ExoAtom runs can usually omit them.
+* `GlobalQNFormat` and `LocalQNFormat` can also be omitted for ExoMol, ExoMolHR, and ExoAtom conversion when the corresponding `GlobalQNLabel` and `LocalQNLabel` entries are present in the metadata. Provide the formats only when you need to override the metadata-derived formats.
+* HITRAN and HITEMP input do not have ExoMol definition metadata, so provide the required quantum number labels and formats explicitly for those conversions or filters.
+* The definition files `.def`, `.def.json`, and `.adef.json` of ExoMol and ExoAtom databases (available at [exomol.com](https://www.exomol.com/)) provide the labels and formats of the quantum numbers for each species for reference.
+* The quantum number metadata for ExoMolHR database can be accessed from [https://www.exomol.com/exomolhr/qn/](https://www.exomol.com/exomolhr/qn/).
+* HITRAN2024 supplementary material ([link](https://hitran.org/media/refs/HITRAN_QN_formats.pdf)) provides the notation and format for quanta identifications for reference.
 
 **Note**
 

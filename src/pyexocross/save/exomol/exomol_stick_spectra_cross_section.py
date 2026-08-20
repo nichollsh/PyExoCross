@@ -19,12 +19,19 @@ from pyexocross.base.large_file import (
     is_large_trans_file,
     read_trans_chunks,
     save_large_txt,
+    sourcename,
 )
 from pyexocross.database import read_broad, get_part_transfiles
 from pyexocross.process.T_n_val import get_ntemp, get_temp_vals
 from pyexocross.process.stick_xsec_filepath import stick_spectra_filepath, temperature_string_base
-from pyexocross.save.exomol.exomol_stick_spectra import process_exomol_stick_spectra_chunk
-from pyexocross.save.exomol.exomol_cross_section import process_exomol_cross_section_chunk
+from pyexocross.save.exomol.exomol_stick_spectra import (
+    process_exomol_stick_spectra_chunk,
+    stickcachecolumns,
+)
+from pyexocross.save.exomol.exomol_cross_section import (
+    crosscachecolumns,
+    process_exomol_cross_section_chunk,
+)
 from pyexocross.plot.plot_stick_spectra import plot_stick_spectra
 from pyexocross.plot.plot_cross_section import save_xsec_file_plot
 from pyexocross.calculation.calcualte_line_profile import line_profile
@@ -37,6 +44,8 @@ if TYPE_CHECKING:
         QNs_format,
         min_wnl,
         max_wnl,
+        min_wn,
+        max_wn,
         UncFilter,
         threshold,
         abs_emi,
@@ -45,6 +54,7 @@ if TYPE_CHECKING:
         wn_wl,
         wn_wl_unit,
         PlotStickSpectraYN,
+        output,
         PlotStickSpectraWnWl,
         PlotStickSpectraUnit,
         cutoff,
@@ -83,6 +93,8 @@ def _ensure_exomol_globals():
         QNs_format,
         min_wnl,
         max_wnl,
+        min_wn,
+        max_wn,
         UncFilter,
         threshold,
         abs_emi,
@@ -91,6 +103,7 @@ def _ensure_exomol_globals():
         wn_wl,
         wn_wl_unit,
         PlotStickSpectraYN,
+        output,
         PlotStickSpectraWnWl,
         PlotStickSpectraUnit,
         cutoff,
@@ -108,6 +121,8 @@ def _ensure_exomol_globals():
             QNs_format=QNs_format,
             min_wnl=min_wnl,
             max_wnl=max_wnl,
+            min_wn=min_wn,
+            max_wn=max_wn,
             UncFilter=UncFilter,
             threshold=threshold,
             abs_emi=abs_emi,
@@ -116,6 +131,7 @@ def _ensure_exomol_globals():
             wn_wl=wn_wl,
             wn_wl_unit=wn_wl_unit,
             PlotStickSpectraYN=PlotStickSpectraYN,
+            output=output,
             PlotStickSpectraWnWl=PlotStickSpectraWnWl,
             PlotStickSpectraUnit=PlotStickSpectraUnit,
             cutoff=cutoff,
@@ -138,6 +154,7 @@ def save_exomol_stick_spectra_cross_section(
     check_uncertainty,
     check_lifetime,
     check_gfactor,
+    trans_sources=None,
 ):
     """
     Combined function to calculate and save both stick spectra and cross sections.
@@ -185,21 +202,22 @@ def save_exomol_stick_spectra_cross_section(
         check_predissoc,
         profile,
     ) = get_config()
-    print('Calculate stick spectra and cross sections.\n')
+    print('\nCalculate stick spectra and cross sections.\n')
+    calculation_timer = Timer().start()
     # Separate timers for stick spectra and cross sections.
     t_ss = Timer()
     t_xsec = Timer()
     
     # Prepare states data
-    states_part_df_ss = states_part_df.copy()
-    if check_uncertainty == True:
+    states_part_df_ss = None if states_part_df is None else states_part_df.copy()
+    if check_uncertainty == True and states_part_df_ss is not None:
         states_part_df_ss.drop(columns=['unc'], inplace=True)
-    if check_lifetime == True or predissocYN == 'Y':
+    if states_part_df_ss is not None and (check_lifetime == True or predissocYN == 'Y'):
         try:
             states_part_df_ss.drop(columns=['tau'], inplace=True)
         except:
             pass
-    if check_gfactor == True:
+    if check_gfactor == True and states_part_df_ss is not None:
         try:
             states_part_df_ss.drop(columns=['gfac'], inplace=True)
         except:
@@ -208,9 +226,16 @@ def save_exomol_stick_spectra_cross_section(
     # Read broadening data for cross sections
     broad, ratio, nbroad, broad_dfs = read_broad(read_path)
     profile_label = line_profile(profile)
+    stickcolumns = stickcachecolumns()
+    crosscolumns = crosscachecolumns(broad_dfs)
+    combinedcolumns = list(dict.fromkeys(stickcolumns + crosscolumns))
     
     print('Reading transitions ONCE for all temperatures (will be used for both stick spectra and cross sections) ...')    
-    trans_filepaths = get_part_transfiles(read_path, data_info)
+    trans_filepaths = (
+        trans_sources
+        if trans_sources is not None
+        else get_part_transfiles(read_path, data_info, min_wn, max_wn)
+    )
     
     # Prepare file format strings
     QNsfmf = (str(QNs_format).replace("'","").replace(",","").replace("[","").replace("]","")
@@ -240,7 +265,7 @@ def save_exomol_stick_spectra_cross_section(
         use_names_xsec = ['uid','lid','A']
     
     # Check if profile is pressure-dependent (Lorentzian/Voigt need pressure)
-    pressure_dependent = profile_label not in ['Gaussian', 'Doppler']
+    pressure_dependent = profile_label not in ['Gaussian', 'Doppler', 'Binned Doppler', 'Binned Gaussion']
     
     # ntemp: L=len(T_list), T/D=len(Trot_list), P=1 (no temperature dimension)
     ntemp = get_ntemp(NLTEMethod, T_list, Trot_list)
@@ -279,7 +304,7 @@ def save_exomol_stick_spectra_cross_section(
     
     # Determine which files are large and cache small file chunks
     for trans_filepath in trans_filepaths:
-        trans_filename = trans_filepath.split('/')[-1]
+        trans_filename = sourcename(trans_filepath)
         large_file = is_large_trans_file(trans_filepath)
         large_files_list.append((trans_filepath, large_file))
         
@@ -287,13 +312,26 @@ def save_exomol_stick_spectra_cross_section(
             # Cache chunks for small files
             use_cols_ss = [0,1,2]
             use_names_ss = ['uid','lid','A']
-            trans_reader_ss = read_trans_chunks(trans_filepath, use_cols_ss, use_names_ss)
+            projectedss = (
+                combinedcolumns if use_cols_ss == use_cols_xsec else stickcolumns
+            )
+            trans_reader_ss = read_trans_chunks(
+                trans_filepath,
+                use_cols_ss,
+                use_names_ss,
+                extracols=projectedss,
+            )
             trans_chunks_cache_ss[trans_filepath] = list(trans_reader_ss)
             num_chunks_ss = len(trans_chunks_cache_ss[trans_filepath])
             
             # Cache cross section chunks if different from stick spectra
             if use_cols_ss != use_cols_xsec:
-                trans_reader_xsec = read_trans_chunks(trans_filepath, use_cols_xsec, use_names_xsec)
+                trans_reader_xsec = read_trans_chunks(
+                    trans_filepath,
+                    use_cols_xsec,
+                    use_names_xsec,
+                    extracols=crosscolumns,
+                )
                 trans_chunks_cache_xsec[trans_filepath] = list(trans_reader_xsec)
             else:
                 trans_chunks_cache_xsec[trans_filepath] = trans_chunks_cache_ss[trans_filepath]
@@ -310,12 +348,17 @@ def save_exomol_stick_spectra_cross_section(
         print('Warning: No transition files found to process.')
     else:
         for trans_filepath, large_file in log_tqdm(large_files_list, desc='Processing transition files'):
-            trans_filename = trans_filepath.split('/')[-1]
+            trans_filename = sourcename(trans_filepath)
             
             if large_file:
                 # For large files: stream ONCE, process each chunk for ALL temperatures
                 print(f'Streaming large file: {trans_filename} (processing for all temperatures)')
-                trans_reader = read_trans_chunks(trans_filepath, use_cols_xsec, use_names_xsec)
+                trans_reader = read_trans_chunks(
+                    trans_filepath,
+                    use_cols_xsec,
+                    use_names_xsec,
+                    extracols=combinedcolumns,
+                )
                 chunk_count = 0
                 
                 for trans_df_chunk in trans_reader:
@@ -407,7 +450,7 @@ def save_exomol_stick_spectra_cross_section(
             stick_spectra_df = pd.concat(valid_frames, ignore_index=True)
             
             # Plot stick spectra for this temperature
-            if PlotStickSpectraYN == 'Y':
+            if PlotStickSpectraYN == 'Y' and output != 'memory':
                 plot_stick_spectra(stick_spectra_df, T=T, Tvib=Tvib, Trot=Trot)
   
             if wn_wl == 'WN':
@@ -424,17 +467,29 @@ def save_exomol_stick_spectra_cross_section(
             else:
                 raise ValueError('Please wirte the unit of wavelength in the input file: um or nm.')      
             stick_spectra_df.sort_values(by=['v'], ascending=True, inplace=True) 
+            from pyexocross.base.result import Condition, record, saving_enabled
+            axis = 'wavenumber' if wn_wl == 'WN' else 'wavelength'
+            record(
+                'stick_spectra',
+                stick_spectra_df,
+                {axis: stick_spectra_df['v'].to_numpy()},
+                {axis: 'cm-1' if wn_wl == 'WN' else wn_wl_unit,
+                 'data': 'cm/molecule'},
+                Condition(T, None, Tvib, Trot),
+            )
             
             # Save stick spectra file for this temperature (shared naming)
-            ss_path = stick_spectra_filepath(ss_folder, T, Tvib, Trot, str_min_wnl, str_max_wnl, unit_fn,
-                                             data_info, wn_wl, UncFilter, threshold, database, abs_emi, LTE_NLTE, photo,
-                                             NLTEMethod)
-            
-            ts = Timer()    
-            ts.start()
-            save_large_txt(ss_path, stick_spectra_df, fmt=ss_fmt)
-            ss_file_count += 1
-            ts.end()
+            ss_path = None
+            if saving_enabled():
+                ss_path = stick_spectra_filepath(
+                    ss_folder, T, Tvib, Trot, str_min_wnl, str_max_wnl,
+                    unit_fn, data_info, wn_wl, UncFilter, threshold,
+                    database, abs_emi, LTE_NLTE, photo, NLTEMethod,
+                )
+                ts = Timer().start()
+                save_large_txt(ss_path, stick_spectra_df, fmt=ss_fmt)
+                ss_file_count += 1
+                ts.end('save')
             print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, None, abs_emi, NLTEMethod, 'Stick spectra', ss_path)
             ss_col = list(stick_spectra_df.columns)
             
@@ -453,7 +508,7 @@ def save_exomol_stick_spectra_cross_section(
             ss_col_list = ['Wavelength'] + ss_col[1:]
             ss_fmt_list = ['%15.8E'] + ss_fmt.split()[1:]
         print_file_info('Stick spectra', ss_col_list, ss_fmt_list)
-        print(f'\nAll {ss_file_count} stick spectra files have been saved!\n')
+        print(f'\nAll {ss_file_count} stick spectra files have been saved!\n') if saving_enabled() else print(f'\nAll {ntemp} stick spectra results retained in memory!\n')
         print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
     
     # Print cross section info once at the beginning
@@ -464,7 +519,7 @@ def save_exomol_stick_spectra_cross_section(
     unique_pressures = sorted(list(set(all_pressures)))
     
     # Print cross section information once before processing
-    print('Calculate cross sections.')
+    print('\nCalculate cross sections.')
     print_xsec_info(profile_label, cutoff, UncFilter, min_wnl, max_wnl, 
                     'cm⁻¹', 'cm⁻¹/(molecule cm⁻²)', broad, ratio)
     
@@ -504,11 +559,16 @@ def save_exomol_stick_spectra_cross_section(
             
             # Process all transition files for this (T, P) combination
             for trans_filepath, large_file in large_files_list:
-                trans_filename = trans_filepath.split('/')[-1]
+                trans_filename = sourcename(trans_filepath)
                 
                 if large_file:
                     # Stream large files again for this (T, P) combination
-                    trans_reader = read_trans_chunks(trans_filepath, use_cols_xsec, use_names_xsec)
+                    trans_reader = read_trans_chunks(
+                        trans_filepath,
+                        use_cols_xsec,
+                        use_names_xsec,
+                        extracols=crosscolumns,
+                    )
                     for trans_df_chunk in trans_reader:
                         chunk_xsec = process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,
                                                                broad,ratio,nbroad,broad_dfs,profile_label,trans_df_chunk,temp_idx)
@@ -562,7 +622,9 @@ def save_exomol_stick_spectra_cross_section(
             print_file_info('Cross sections', ['Wavenumber', 'Cross section'], ['%15.6f', '%15.8E'])
         else:
             print_file_info('Cross sections', ['Wavelength', 'Cross section'], ['%15.8E', '%15.8E'])
-        print(f'\nAll {xsec_file_count} cross sections files have been saved!\n')
+        print(f'\nAll {xsec_file_count} cross sections files have been saved!\n') if saving_enabled() else print(f'\nAll {xsec_file_count} cross section results retained in memory!\n')
+    from pyexocross.base.result import end_calculation
+    end_calculation(calculation_timer)
     print('\nFinished reading transitions and calculating stick spectra and cross sections!\n')
     
     # Check if we have any results
@@ -579,7 +641,7 @@ def save_exomol_stick_spectra_cross_section(
         raise ValueError("Empty result with the input filter values. Please type new filter values in the input file.")
     
     if any_results_ss:
-        print(f'All {ss_file_count} stick spectra files have been saved!\n')
+        print(f'All {ss_file_count} stick spectra files have been saved!\n') if saving_enabled() else print(f'All {ntemp} stick spectra results retained in memory!\n')
     if any_results_xsec:
-        print(f'All {xsec_file_count} cross sections files have been saved!\n')
+        print(f'All {xsec_file_count} cross sections files have been saved!\n') if saving_enabled() else print(f'All {xsec_file_count} cross section results retained in memory!\n')
     print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
