@@ -28,14 +28,21 @@ from pyexocross.base.log import (
 from pyexocross.base.input import parse_args
 
 if __name__ == '__main__':
-    # inp_path = "/home/jingxin/LHD/Program/PyExoCross/.input/MgH_ExoMol.inp"
+    # get input file path from command line
     inp_path = parse_args()
 
+    # load config from input file
+    cfg = Config(inp_filepath=inp_path, force_reload=True)
+
+    # clear output folder
+    cfg.clear_output_folder()
+
+    # setup logging
     verbose = parse_verbose_info(inp_path)
     logpath = parse_logging_info(inp_path)
     if logpath is not None:
         setup_logging(logpath, announce=verbose)
+
+    # run the main function with output context
     with output_context(verbose):
-        # CLI should always reflect latest .inp edits in the same shell session.
-        cfg = Config(inp_filepath=inp_path, force_reload=True)
         get_results(cfg)

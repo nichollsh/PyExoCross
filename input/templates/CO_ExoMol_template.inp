@@ -24,8 +24,8 @@ CrossSections                           1
 
 
 # Cores and chunks #
-NCPUtrans                               5
-NCPUfiles                               9
+NCPUtrans                               10
+NCPUfiles                               4
 ChunkSize                               1000000
 RunMode                                 GPU                       # CPU(default) or GPU
 GPUBackend                              AUTO                      # AUTO, CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (only used when RunMode=GPU)
@@ -40,7 +40,7 @@ QNsformat                                  %3d     %1s
 
 # Calculate partition, specific heats or cooling functions #
 Ntemp                                   1                         # The number of temperature steps
-Tmax                                    3000                     # Maximal temperature in K 
+Tmax                                    5000                     # Maximal temperature in K 
 
 
 # Calculate lifetimes #
@@ -58,12 +58,12 @@ Y-axisLimitOscillatorStrength           1e-30                     # Default valu
 
 # Calculate stick spectra or cross sections #
 LTE/Non-LTE                             LTE                       # 'LTE' or 'Non-LTE'
-Temperatures                            100,500,1000,2000        # Temperature in unit of K
+Temperatures                            10,1000,2000        # Temperature in unit of K
 WnWlUnit                                wn         cm-1           # Wavenumber (wn in unit of cm-1) or wavelength (wl in unit of um or nm)
 Range                                   10         50000          # Same unit as WnWlUnit
 Absorption/Emission                     Absorption                # 'Absorption' or 'Emission'
 UncFilter(Y/N)                          N          0.01           # If Y, default value 0.01 cm-1
-Threshold(Y/N)                          Y          1e-30          # If Y, default value 1e-30 cm/molecule
+Threshold(Y/N)                          N          1e-30          # If Y, default value 1e-30 cm/molecule
 QNsFilter(Y/N)                          N          v[]  e/f[]
 
 
@@ -71,12 +71,12 @@ QNsFilter(Y/N)                          N          v[]  e/f[]
 PlotStickSpectra(Y/N)                   Y          
 PlotStickSpectraMethod                  log                       # Plot in linear (lin) or logarithm (log)
 PlotStickSpectraWnWl                    wn         cm-1           # Wavenumber (wn in unit cm-1) or wavelength (wl in unit[nm or um])
-Y-axisLimitStickSpectra                 1e-30                     # Default value is 1e-30 cm/molecule
+Y-axisLimitStickSpectra                 1e-32                     # Default value is 1e-30 cm/molecule
 
 
 # Calculate cross sections #
 Pressures                               1e-1,1e1,1e2
-Npoints/BinSize                         BinSize   0.01
+Npoints/BinSize                         BinSize   0.02
 Broadeners                              Default
 Ratios                                  1.0   
 Profile                                 SciPyVoigt     

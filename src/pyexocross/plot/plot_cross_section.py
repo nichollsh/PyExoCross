@@ -4,6 +4,7 @@ Plotting functions for cross sections.
 This module provides functions for plotting and saving cross-section data.
 """
 import os
+import shutil
 import datetime
 import numpy as np
 import pandas as pd
@@ -105,6 +106,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
         bin_size,
         cutoff,
         T_list,
+        inp_filepath,
     )
     wn = np.asarray(wn)
     xsec = np.asarray(xsec)
@@ -129,6 +131,10 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
         return
     xsecs_foldername = save_path+'xsecs/files/'+data_info[0]+'/'+database+'/'
     ensure_dir(xsecs_foldername)
+    if inp_filepath is not None:
+        config_copy_path = os.path.join(xsecs_foldername, os.path.basename(inp_filepath))
+        if not os.path.exists(config_copy_path):
+            shutil.copy2(inp_filepath, config_copy_path)
     configure_mpl_large_path_rendering()
     min_v = min(wn)
     max_v = max(wn)

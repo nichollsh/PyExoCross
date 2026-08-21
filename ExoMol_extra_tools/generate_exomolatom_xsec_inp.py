@@ -111,14 +111,24 @@ def _update_unc_filter(lines: List[str], has_uncertainty: bool) -> None:
             return
 
 
-def _update_log_file_path(lines: List[str], species: str, dataset: str) -> bool:
+def _find_line_value(lines: List[str], key: str) -> str:
+    for line in lines:
+        if line.lstrip().startswith(key):
+            parts = line.split()
+            return parts[1] if len(parts) > 1 else ""
+    return ""
+
+
+def _update_log_file_path(lines: List[str], species: str, dataset: str, database: str) -> bool:
+    # Point the log at the same directory PyExoCross writes xsec files to
+    # (save_path+'xsecs/files/<species>/<database>/', see plot_cross_section.py),
+    # so the log ends up alongside the .xsec output instead of in SavePath's root.
+    save_path = _find_line_value(lines, "SavePath")
+    log_dir = os.path.join(save_path, "xsecs", "files", species, database) if save_path else ""
+    log_name = f"{species}_{dataset}.log"
+    new_path = os.path.join(log_dir, log_name) if log_dir else log_name
     for idx, line in enumerate(lines):
         if line.lstrip().startswith("LogFilePath"):
-            parts = line.split()
-            base_path = parts[1] if len(parts) > 1 else ""
-            log_dir = os.path.dirname(base_path) if base_path else ""
-            log_name = f"{species}_{dataset}.log"
-            new_path = os.path.join(log_dir, log_name) if log_dir else log_name
             lines[idx] = f"{'LogFilePath':<40}{new_path}\n"
             return True
     return False
@@ -247,7 +257,7 @@ def generate_inputs(
             raise ValueError("Template must include a 'Dataset' line.")
         if not _replace_line(out_lines, "SpeciesID", str(species_id)):
             raise ValueError("Template must include a 'SpeciesID' line.")
-        if not _update_log_file_path(out_lines, species, entry["dataset"]):
+        if not _update_log_file_path(out_lines, species, entry["dataset"], database):
             raise ValueError("Template must include a 'LogFilePath' line.")
         if not _replace_line(out_lines, "QNslabel", "  ".join(labels)):
             raise ValueError("Template must include a 'QNslabel' line.")

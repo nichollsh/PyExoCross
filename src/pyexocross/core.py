@@ -9,7 +9,6 @@ import os
 import numpy as np
 from tabulate import tabulate
 from tqdm import tqdm
-import shutil
 from concurrent.futures import ProcessPoolExecutor
 from pyexocross.base.log import log_tqdm
 
@@ -133,7 +132,11 @@ def get_results(config, data=None):
     read_path = config.read_path
     save_path = config.save_path
 
-    # Delete folder for this calculation
+    # Delete folder for this calculation. Spare .log files: LogFilePath may
+    # point inside this tree (e.g. alongside the xsec output it describes),
+    # and by this point setup_logging() has already opened it for writing -
+    # rmtree-ing it out from under that open handle would silently discard
+    # the run's log.
     for subdir in ['files','plots']:
         rmpath = os.path.join(save_path, 'xsecs', subdir, data_info[0])
 
@@ -142,7 +145,12 @@ def get_results(config, data=None):
             raise ValueError(f"Refusing to remove {rmpath} because it contains a .git directory.")
 
         print(f"Removing {rmpath}")
-        shutil.rmtree(rmpath, ignore_errors=True)
+        for root, dirs, files in os.walk(rmpath, topdown=False):
+            for fname in files:
+                if not fname.endswith('.log'):
+                    os.remove(os.path.join(root, fname))
+            if root != rmpath and not os.listdir(root):
+                os.rmdir(root)
         
     print("")
 

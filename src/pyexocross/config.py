@@ -6,11 +6,8 @@ Supports two input methods:
 2. Direct parameter passing via function arguments
 """
 import os
-import re
-import warnings
+import shutil
 import numpy as np
-import pandas as pd
-from tabulate import tabulate
 
 from pyexocross.base.input import inp_para, parse_TP_values
 from pyexocross.base.log import normalize_verbose, parse_verbose_info
@@ -40,6 +37,7 @@ class Config:
         **kwargs
             Direct parameter values. Used when inp_filepath is None or to override file values.
         """
+        self.inp_filepath = inp_filepath
         if inp_filepath is not None:
             self._load_from_file(inp_filepath, force_reload=force_reload)
             self.output = 'files'
@@ -53,6 +51,23 @@ class Config:
         # Store on ConfigManager so get_config() works for both pathways.
         from pyexocross.base.config_manager import ConfigManager
         ConfigManager._last_config = self
+
+    def clear_output_folder(self):
+        """Clear the output folder specified in the configuration."""
+        if hasattr(self, 'save_path') and self.save_path:
+            ensure_dir(self.save_path)
+            for f in os.listdir(self.save_path):
+                file_path = os.path.join(self.save_path, f)
+
+                # check that it doesn't contain git directory or important files
+                if '.git' in file_path or 'pyexocross.log' in file_path:
+                    print(f"Skipping deletion of {file_path} (protected)")
+                    continue
+
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
     
     def _load_from_file(self, inp_filepath, force_reload=False):
         """Load configuration from .inp file."""
@@ -632,6 +647,7 @@ class Config:
             'read_path': 'read_path',
             'save_path': 'save_path',
             'logs_path': 'logs_path',
+            'inp_filepath': 'inp_filepath',
             'conversion': 'Conversion',
             'partition_functions': 'PartitionFunctions',
             'specific_heats': 'SpecificHeats',
