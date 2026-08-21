@@ -25,6 +25,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
 
+# reference data 
+REF_DIR = Path(__file__).parent.parent / "data" / "opacity_ruizhi"
+
+# generated data
+XSC_DIR = Path(__file__).parent.parent / "data" / "xsc" / "exocross" / "xsecs" / "files"
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -70,10 +75,9 @@ def parse_arguments():
 
 def find_exocross_xsec_file(molecule, temperature, pressure):
     """Find the ExoCross .xsec file matching the given T/P."""
-    xsec_dir = Path(__file__).parent.parent / "data" / "xsc" / "exocross" / "xsecs" / "files"
     
-    if not xsec_dir.exists():
-        raise FileNotFoundError(f"ExoCross directory not found: {xsec_dir}")
+    if not XSC_DIR.exists():
+        raise FileNotFoundError(f"ExoCross directory not found: {XSC_DIR}")
     
     # Build expected filename pattern
     # Format: MOLECULE__...__T{T}K__P{P}bar__...__.xsec
@@ -88,7 +92,7 @@ def find_exocross_xsec_file(molecule, temperature, pressure):
     pattern = f"{molecule}*{temp_str}*{pressure_str}*.xsec"
     
     # Search recursively for matching files
-    matching_files = list(xsec_dir.glob("**/*.xsec"))
+    matching_files = list(XSC_DIR.glob("**/*.xsec"))
     matching_files = [f for f in matching_files if re.match(
         f".*{molecule}.*{temp_str}.*{pressure_str}.*",
         f.name
@@ -127,17 +131,16 @@ def read_xsec_file(filepath):
 
 def find_reference_hdf5_file(molecule):
     """Find the reference HDF5 file for the given molecule."""
-    ref_dir = Path(__file__).parent.parent / "data" / "opacity_ruizhi"
     
-    if not ref_dir.exists():
-        raise FileNotFoundError(f"Reference opacity directory not found: {ref_dir}")
+    if not REF_DIR.exists():
+        raise FileNotFoundError(f"Reference opacity directory not found: {REF_DIR}")
     
     # Look for HDF5 file with molecule name
-    h5_files = list(ref_dir.glob(f"*{molecule}*.h5"))
+    h5_files = list(REF_DIR.glob(f"*{molecule}*.h5"))
     
     if not h5_files:
         raise FileNotFoundError(
-            f"No HDF5 reference file found for molecule {molecule} in {ref_dir}"
+            f"No HDF5 reference file found for molecule {molecule} in {REF_DIR}"
         )
     
     if len(h5_files) > 1:

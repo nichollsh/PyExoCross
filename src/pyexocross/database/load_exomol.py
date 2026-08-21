@@ -415,15 +415,17 @@ def read_exomol_pf(read_path, data_info, T_list):
         pf_df = pd.read_csv(pf_filename, sep=r'\s+', names=pf_col_name, header=None, engine='python')
     except:
         raise ValueError('No partition function file. Please check the file path.')
-    try:
-        Q_list = pf_df[pf_df['T'].isin(T_list)]['Q']
-    except:
-        raise ValueError('No specified temperature dependent partition funtion value.', 
-                          'Please change the temperature(s) or calculate the partition function at first.')
-    if Q_list.empty:
+    # Tabulated T can have small floating-point drift from nominal integer
+    # values (e.g. 500.1 instead of 500.0), so interpolate rather than
+    # requiring an exact match.
+    pf_df = pf_df.sort_values('T')
+    T_grid = pf_df['T'].to_numpy(dtype=float)
+    Q_grid = pf_df['Q'].to_numpy(dtype=float)
+    T_arr = np.asarray(T_list, dtype=float)
+    if np.any((T_arr < T_grid[0]) | (T_arr > T_grid[-1])):
         raise ValueError('No specified temperature dependent partition funtion value.',
                          'Please change the temperature(s) or calculate the partition function at first.')
-    Q_arr = Q_list.to_numpy(dtype=float)
+    Q_arr = np.interp(T_arr, T_grid, Q_grid)
     return Q_arr
 
 # Read Broadening File

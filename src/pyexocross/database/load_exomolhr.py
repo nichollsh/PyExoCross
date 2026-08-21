@@ -171,13 +171,18 @@ def read_exomolhr_pf(read_path, data_info, T_list):
     """Read ExoMolHR partition-function values for selected temperatures."""
     _, pf_path, _ = resolve_exomolhr_filepaths(read_path, data_info[0], data_info[1])
     pf_df = pd.read_csv(pf_path, sep=r'\s+', names=['T', 'Q'], header=None, engine='python')
-    Q_list = pf_df[pf_df['T'].isin(T_list)]['Q']
-    if Q_list.empty:
+    # Tabulated T can have small floating-point drift from nominal integer
+    # values, so interpolate rather than requiring an exact match.
+    pf_df = pf_df.sort_values('T')
+    T_grid = pf_df['T'].to_numpy(dtype=float)
+    Q_grid = pf_df['Q'].to_numpy(dtype=float)
+    T_arr = np.asarray(T_list, dtype=float)
+    if np.any((T_arr < T_grid[0]) | (T_arr > T_grid[-1])):
         raise ValueError(
             'No specified temperature dependent partition funtion value.',
             'Please change the temperature(s) or calculate the partition function at first.',
         )
-    return Q_list.to_numpy(dtype=float)
+    return np.interp(T_arr, T_grid, Q_grid)
 
 
 def process_exomolhr_linelist(exomolhr_df):

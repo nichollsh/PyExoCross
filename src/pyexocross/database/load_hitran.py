@@ -228,12 +228,16 @@ def read_hitran_pf(T_list):
     Q_col_name = ['T', 'Q']
     pf_path = _resolve_hitran_pf_path(read_path)
     pf_df = pd.read_csv(pf_path, sep='\\s+', names=Q_col_name, header=None)
-    try:
-        Q_list = pf_df[pf_df['T'].isin(T_list)]['Q']
-    except:
-        raise ValueError('No specified temperature dependent partition funtion value.', 
+    # Tabulated T can have small floating-point drift from nominal integer
+    # values, so interpolate rather than requiring an exact match.
+    pf_df = pf_df.sort_values('T')
+    T_grid = pf_df['T'].to_numpy(dtype=float)
+    Q_grid = pf_df['Q'].to_numpy(dtype=float)
+    T_arr = np.asarray(T_list, dtype=float)
+    if np.any((T_arr < T_grid[0]) | (T_arr > T_grid[-1])):
+        raise ValueError('No specified temperature dependent partition funtion value.',
                           'Please change the temperature(s) or calculate the partition function at first.')
-    Q_arr = Q_list.to_numpy(dtype=float)    
+    Q_arr = np.interp(T_arr, T_grid, Q_grid)
     return Q_arr
     
 def process_hitran_linelist(hitran_linelist_df):
