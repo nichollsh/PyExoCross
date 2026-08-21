@@ -54,10 +54,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/FormingWorlds/PyExoCross"
+Homepage = "https://github.com/nichollsh/PyExoCross"
 Documentation = "https://pyexocross.readthedocs.io"
-Repository = "https://github.com/FormingWorlds/PyExoCross"
-Issues = "https://github.com/FormingWorlds/PyExoCross/issues"
+Repository = "https://github.com/nichollsh/PyExoCross"
+Issues = "https://github.com/nichollsh/PyExoCross/issues"
 Publication = "https://doi.org/10.1093/rasti/rzae016"
 
 [tool.setuptools.packages.find]
