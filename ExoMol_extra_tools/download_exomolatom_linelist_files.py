@@ -22,36 +22,33 @@ url_dir = f'/scratch/p321409/opacity_lbl/exomol/url/'
 # Full path to the urls file (derived from url_dir)
 url_path = os.path.join(url_dir, 'api__urls.txt')
 file_path = f'/scratch/p321409/opacity_lbl/{database.lower()}/'
-# molecules = ['H2O', 'CO2', 'H2', 'H2S', 'N2', 'SiO']
-# molecules = ['CH4', 'NH3', 'SO2', 'HCN', 'O3', 'N2O', 'O2']
-molecules = ['Na']
 
 # Preferred isotopologues per molecule (must match ExoMol API keys).
 # Example values (replace with desired isotopologues):
 preferred_isotopologues = {
-    'H2O': ['(1H)2(16O)',],
-    'CO2': ['(12C)(16O)2',],
-    'H2': ['(1H)2',],
-    'H2S': ['(1H)2(32S)',],
-    'N2': ['(14N)2',],
-    'SiO': ['(28Si)(16O)',],
-    'CO': ['(12C)(16O)',],
-    'CH4': ['(12C)(1H)4',],
-    'NH3': ['(14N)(1H)3',],
-    'SO2': ['(32S)(16O)2',],
-    'HCN': ['(1H)(12C)(14N)',],
-    'O3': ['(16O)3',],
-    'N2O': ['(14N)2(16O)',],
-    'O2': ['(16O)2',],
-    'SiO2': ['(28Si)(16O)2',],
-    'MgO': ['(24Mg)(16O)',],
     'Na': ['(23Na)',],
+    'K': ['(39K)',],
+    'Fe': ['(56Fe)',],
+    'Mg': ['(24Mg)',],
+    'H': ['(1H)',],
+    'He': ['(4He)',],
+    'O': ['(16O)',],
 }
 
 # Preferred datasets per atom (ExoAtom only). Example values:
 preferred_datasets = {
     'Na': ['NIST', 'Kurucz'],
+    'K':  ['NIST', ],
+    'Fe': ['NIST', ],
+    'Mg': ['NIST', ],
+    'H':  ['NIST', ],
+    'He': ['NIST', ],
+    'O':  ['NIST', ],
 }
+
+
+molecules = ['Na', 'K', 'Fe', 'Mg', 'H', 'He']
+
 ########################################################
 
 # Get API URLs
