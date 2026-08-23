@@ -434,6 +434,5 @@ zenodo_stellar_spectra_extracted/
 tests/validation/
 
 # Claude AI files
-CLAUDE.md
 .claude/
 .mcp.json
