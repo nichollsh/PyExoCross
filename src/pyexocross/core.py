@@ -113,17 +113,20 @@ def get_results(config, data=None):
     from pyexocross.save.hitran.hitran_cross_section import save_hitran_cross_section
     from pyexocross.save.hitran.hitran_stick_spectra_cross_section import save_hitran_stick_spectra_cross_section
     
-    # Update bin-size–dependent constants used by line profile and
-    # cross-section routines so that modules importing from
-    # pyexocross.base.constants see consistent values.
+    # Update bin-size–dependent constants used by line profile and cross-section routines.
     from pyexocross.base import constants as _const_mod
+    import pyexocross.calculation.calcualte_line_profile as _calc_mod
+    import pyexocross.calculation.calculate_cross_section as _xsec_mod
     bin_const_dict = _const_mod.get_bin_size_constants(config.bin_size)
     for _name, _val in bin_const_dict.items():
         setattr(_const_mod, _name, _val)
-        
+        if hasattr(_calc_mod, _name):
+            setattr(_calc_mod, _name, _val)
+        if hasattr(_xsec_mod, _name):
+            setattr(_xsec_mod, _name, _val)
+
     # Pre-calculate Doppler HWHM constant outside the def and inject it
     # as a global constant for Doppler_HWHM to use directly.
-    import pyexocross.calculation.calcualte_line_profile as _calc_mod
     _calc_mod.Sqrt2NAkBln2mInvc = _const_mod.get_doppler_constants(config.mass)
     
     # Access globals (set by config.to_globals())
@@ -132,25 +135,8 @@ def get_results(config, data=None):
     read_path = config.read_path
     save_path = config.save_path
 
-    # Delete folder for this calculation. Spare .log files: LogFilePath may
-    # point inside this tree (e.g. alongside the xsec output it describes),
-    # and by this point setup_logging() has already opened it for writing -
-    # rmtree-ing it out from under that open handle would silently discard
-    # the run's log.
-    for subdir in ['files','plots']:
-        rmpath = os.path.join(save_path, 'xsecs', subdir, data_info[0])
-
-        # check safe
-        if os.path.exists(os.path.join(rmpath,".git")):
-            raise ValueError(f"Refusing to remove {rmpath} because it contains a .git directory.")
-
-        print(f"Removing {rmpath}")
-        for root, dirs, files in os.walk(rmpath, topdown=False):
-            for fname in files:
-                if not fname.endswith('.log'):
-                    os.remove(os.path.join(root, fname))
-            if root != rmpath and not os.listdir(root):
-                os.rmdir(root)
+    # Delete folder for this calculation
+    config.clear_output_folder()
         
     print("")
 

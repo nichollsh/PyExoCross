@@ -54,20 +54,22 @@ class Config:
 
     def clear_output_folder(self):
         """Clear the output folder specified in the configuration."""
-        if hasattr(self, 'save_path') and self.save_path:
-            ensure_dir(self.save_path)
-            for f in os.listdir(self.save_path):
-                file_path = os.path.join(self.save_path, f)
+        for subdir in ['files','plots']:
+            rmpath = os.path.join(self.save_path, 'xsecs', 
+                                  subdir, 
+                                  self.data_info[0], self.database)
 
-                # check that it doesn't contain git directory or important files
-                if '.git' in file_path or 'pyexocross.log' in file_path:
-                    print(f"Skipping deletion of {file_path} (protected)")
-                    continue
+            # check safe
+            if os.path.exists(os.path.join(rmpath,".git")):
+                raise ValueError(f"Refusing to remove {rmpath} because it contains a .git directory.")
 
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
+            print(f"Removing {rmpath}")
+            for root, dirs, files in os.walk(rmpath, topdown=False):
+                for fname in files:
+                    if not fname.endswith('.log'):
+                        os.remove(os.path.join(root, fname))
+                if root != rmpath and not os.listdir(root):
+                    os.rmdir(root)
     
     def _load_from_file(self, inp_filepath, force_reload=False):
         """Load configuration from .inp file."""

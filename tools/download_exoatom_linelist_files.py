@@ -11,17 +11,12 @@ from collections import defaultdict
 from tqdm import tqdm
 urllib3.disable_warnings()
 
-# File Paths and Molecules
-################## Could be changed ! ##################
-# Select database: 'ExoMol' or 'ExoAtom'
-database = 'ExoAtom'
-
 # Directory that will hold the generated api__urls.txt file
 url_dir = f'/scratch/p321409/opacity_lbl/exomol/url/'
 
 # Full path to the urls file (derived from url_dir)
 url_path = os.path.join(url_dir, 'api__urls.txt')
-file_path = f'/scratch/p321409/opacity_lbl/{database.lower()}/'
+file_path = f'/scratch/p321409/opacity_lbl/exoatom/'
 
 # Preferred isotopologues per molecule (must match ExoMol API keys).
 # Example values (replace with desired isotopologues):
@@ -166,10 +161,8 @@ def get_urls(molecules, preferred_isotopologues):
 # wget  -r -nH --cut-dirs=1 -P savePath -i PathOFapi__urls.txt
 # Download line list files with urls and save them into correspoding folders.
 def download_files(molecules, url_path, preferred_isotopologues):
-    if database.lower() == 'exoatom':
-        urls = get_exoatom_urls(molecules, preferred_datasets)
-    else:
-        urls = get_urls(molecules, preferred_isotopologues)
+    urls = get_exoatom_urls(molecules, preferred_datasets)
+
     # Save all URLs to a text file
     os.makedirs(os.path.dirname(url_path), exist_ok=True)
     with open(url_path, "w", encoding="utf-8") as fh:
@@ -179,8 +172,8 @@ def download_files(molecules, url_path, preferred_isotopologues):
     command = f'wget -r -nH --cut-dirs=1 -P {file_path} -i {url_path}'
     subprocess.run(command, shell=True)
     print('\nAll files have been downloaded to', file_path, 'folder!')
-    if database.lower() == 'exoatom':
-        postprocess_exoatom_files(file_path, molecules)
+
+    postprocess_exoatom_files(file_path, molecules)
 
 
 def postprocess_exoatom_files(base_path, atoms):

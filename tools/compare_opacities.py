@@ -73,40 +73,52 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def find_exocross_xsec_file(molecule, temperature, pressure):
-    """Find the ExoCross .xsec file matching the given T/P."""
-    
+def find_exocross_xsec_files(molecule, temperature, pressure):
+    """
+    Find all ExoCross .xsec files matching the given T/P.
+    """
     if not XSC_DIR.exists():
         raise FileNotFoundError(f"ExoCross directory not found: {XSC_DIR}")
-    
+
     # Build expected filename pattern
     # Format: MOLECULE__...__T{T}K__P{P}bar__...__.xsec
     temp_str = f"T{int(temperature)}K"
-    
+
     # Format pressure - use scientific notation for very small/large values
     if pressure < 0.001 or pressure >= 1000:
         pressure_str = f"P{pressure:.2e}bar"
     else:
         pressure_str = f"P{pressure}bar"
-    
-    pattern = f"{molecule}*{temp_str}*{pressure_str}*.xsec"
-    
+
     # Search recursively for matching files
     matching_files = list(XSC_DIR.glob("**/*.xsec"))
     matching_files = [f for f in matching_files if re.match(
         f".*{molecule}.*{temp_str}.*{pressure_str}.*",
         f.name
     )]
-    
+
     if not matching_files:
         raise FileNotFoundError(
             f"No ExoCross file found for {molecule} at T={temperature}K, P={pressure}bar"
         )
-    
-    if len(matching_files) > 1:
-        print(f"Warning: Found {len(matching_files)} matching files. Using first one.")
-    
-    return matching_files[0]
+
+    return sorted(matching_files)
+
+
+def describe_xsec_source(path):
+    """
+    Build a short legend label (e.g. 'ExoMol (Li2015)') for an .xsec file.
+    """
+    database = path.parent.name
+    tokens = path.name.split('__')
+    dataset = None
+    for i, tok in enumerate(tokens):
+        if re.match(r'^(T\d|Tvib\d)', tok):
+            data_info_tokens = tokens[:i]
+            if len(data_info_tokens) >= 2:
+                dataset = data_info_tokens[-1]
+            break
+    return f"{database} ({dataset})" if dataset else database
 
 
 def read_xsec_file(filepath):
@@ -136,15 +148,13 @@ def find_reference_hdf5_file(molecule):
     """Find the reference HDF5 file for the given molecule."""
     
     if not REF_DIR.exists():
-        raise FileNotFoundError(f"Reference opacity directory not found: {REF_DIR}")
+        raise None
     
     # Look for HDF5 file with molecule name
     h5_files = list(REF_DIR.glob(f"*{molecule}*.h5"))
     
     if not h5_files:
-        raise FileNotFoundError(
-            f"No HDF5 reference file found for molecule {molecule} in {REF_DIR}"
-        )
+        return None
     
     if len(h5_files) > 1:
         print(f"Warning: Found {len(h5_files)} HDF5 files. Using first one.")
@@ -231,64 +241,73 @@ def calculate_residual(xsec1, xsec2):
     return residual, relative_error
 
 
-def make_comparison_plot(wl_common, 
-                         wl_exocross, wl_ref,
-                         xsec_exocross, xsec_ref, 
-                         xsec_exocross_per_um, xsec_ref_per_um,
-                         molecule, temperature, 
-                        pressure, residual, rel_error, wl_range=None, per_um=True):
-    """Create comparison plot with opacity and residuals."""
-    fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
-    
-    # Apply wavelength range if specified
-    if wl_range is not None:
-        mask = (wl_common >= wl_range[0]) & (wl_common <= wl_range[1])
-        wl_plot = wl_common[mask]
-        xsec_exocross_plot = xsec_exocross[mask]
-        xsec_ref_plot = xsec_ref[mask]
-        residual_plot = residual[mask]
-        rel_error_plot = rel_error[mask]
-    else:
-        wl_plot = wl_common
-        xsec_exocross_plot = xsec_exocross
-        xsec_ref_plot = xsec_ref
-        residual_plot = residual
-        rel_error_plot = rel_error
-    
-    # Plot 1: Opacities comparison
+def _masked(wl, values, wl_range):
+    if wl_range is None:
+        return wl, values
+    mask = (wl >= wl_range[0]) & (wl <= wl_range[1])
+    return wl[mask], values[mask]
+
+
+def make_comparison_plot(sources, reference, molecule, temperature, pressure, wl_range=None):
+    """Create a comparison plot overlaying every calculated opacity source.
+
+    ``sources`` is a list of dicts, one per ``.xsec`` file found (e.g. one
+    from ExoMol, one from HITRAN), each with keys ``label``, ``wl``,
+    ``xsec_per_um`` and, when a reference is available, ``wl_common``,
+    ``residual``, ``rel_error``. ``reference`` is ``None`` or a dict with
+    ``wl``/``xsec_per_um`` for the reference HDF5 opacity. Residual/relative
+    error panels are only drawn when a reference is available.
+    """
+    have_ref = reference is not None
+    n_panels = 3 if have_ref else 1
+    fig, axes = plt.subplots(n_panels, 1, figsize=(12, 10 if have_ref else 5), sharex=True)
+    axes = np.atleast_1d(axes)
+
+    # Plot 1: Opacities comparison (every calculated source, plus reference)
     ax1 = axes[0]
-    if per_um:
-        ax1.plot(wl_exocross, xsec_exocross_per_um, label='ExoCross', linewidth=2, alpha=0.8)
-        ax1.plot(wl_ref, xsec_ref_per_um, label='Reference', linewidth=2, alpha=0.8)
-        ax1.set_ylabel('Cross-section (cm²/µm)', fontsize=11)
-    else:
-        ax1.plot(wl_plot, xsec_exocross_plot, label='ExoCross', linewidth=2, alpha=0.8)
-        ax1.plot(wl_plot, xsec_ref_plot, label='Reference', linewidth=2, alpha=0.8)
-        ax1.set_ylabel('Cross-section (cm²)', fontsize=11)
+    for src in sources:
+        wl_plot, xsec_plot = _masked(src['wl'], src['xsec_per_um'], wl_range)
+        ax1.plot(wl_plot, xsec_plot, label=src['label'], linewidth=2, alpha=0.5)
+    if have_ref:
+        wl_plot, xsec_plot = _masked(reference['wl'], reference['xsec_per_um'], wl_range)
+        ax1.plot(wl_plot, xsec_plot, label='Reference', linewidth=2,  color='black', alpha=0.5)
+    ax1.set_ylabel('Cross-section (cm²/µm)', fontsize=11)
     ax1.legend(fontsize=10)
     ax1.set_yscale('log')
     ax1.grid(True, which='both', alpha=0.3)
     ax1.set_title(f'{molecule}: T={temperature}K, P={pressure}bar', fontsize=12, fontweight='bold')
-    
-    # Plot 2: Absolute residual
+
+    if not have_ref:
+        ax1.set_xlabel('Wavelength (µm)', fontsize=11)
+        ax1.set_xscale('log')
+        plt.tight_layout()
+        return fig
+
+    # Plot 2: Absolute residual (each source vs. reference)
     ax2 = axes[1]
-    ax2.plot(wl_plot, np.abs(residual_plot), color='red', linewidth=2, alpha=0.8)
-    ax2.axhline(y=0, color='black', linestyle='--', alpha=0.5)
+    for src in sources:
+        wl_plot, residual_plot = _masked(src['wl_common'], src['residual'], wl_range)
+        ax2.plot(wl_plot, np.abs(residual_plot), label=src['label'], linewidth=2, alpha=0.5)
+    ax2.axhline(y=0, color='black', alpha=0.5)
     ax2.set_ylabel('|Residual| (cm²)', fontsize=11)
     ax2.set_yscale('symlog', linthresh=1e-30)
     ax2.set_ylim(bottom=0)
+    ax2.legend(fontsize=10)
     ax2.grid(True, which='both', alpha=0.3)
-    
-    # Plot 3: Relative error
+
+    # Plot 3: Relative error (each source vs. reference)
     ax3 = axes[2]
-    ax3.plot(wl_plot, np.abs(rel_error_plot), color='green', linewidth=2, alpha=0.8)
+    for src in sources:
+        wl_plot, rel_error_plot = _masked(src['wl_common'], src['rel_error'], wl_range)
+        ax3.plot(wl_plot, np.abs(rel_error_plot), label=src['label'], linewidth=2, alpha=0.5)
     ax3.set_ylabel('|Relative Error|', fontsize=11)
     ax3.set_xlabel('Wavelength (µm)', fontsize=11)
     ax3.set_yscale('symlog', linthresh=1e-6)
     ax3.set_ylim(bottom=0)
+    ax3.legend(fontsize=10)
     ax3.grid(True, which='both', alpha=0.3)
     ax3.set_xscale("log")
-    
+
     plt.tight_layout()
     return fig
 
@@ -326,85 +345,104 @@ def main():
     print(f"Comparing opacities for {args.molecule} at T={args.temperature}K, P={args.pressure}bar")
     print()
     
-    try:
-        # Find and read ExoCross file
-        print("Reading ExoCross cross-section...")
-        xsec_file = find_exocross_xsec_file(args.molecule, args.temperature, args.pressure)
-        print(f"  Found: {xsec_file}")
-        wl_exo, wl_wid_exo, xsec_exo = read_xsec_file(xsec_file)
-        xsec_exo_per_um = xsec_exo/ wl_wid_exo # Convert to per micron for plotting
-        print(f"  Wavelength range: {wl_exo[0]:.4f} - {wl_exo[-1]:.4f} µm")
-        print(f"  Data points: {len(wl_exo)}")
+    # Find and read every calculated (ExoCross) cross-section available
+    print("Reading calculated cross-sections...")
+    xsec_files = find_exocross_xsec_files(args.molecule, args.temperature, args.pressure)
+    print(f"  Found {len(xsec_files)} source(s):")
 
-        # Find and read reference file
-        print("\nReading reference opacity...")
-        h5_file = find_reference_hdf5_file(args.molecule)
+    sources = []
+    for xsec_file in xsec_files:
+        label = describe_xsec_source(xsec_file)
+        wl_exo, wl_wid_exo, xsec_exo = read_xsec_file(xsec_file)
+        xsec_exo_per_um = xsec_exo / wl_wid_exo  # Convert to per micron for plotting
+        print(f"    {label}")
+        print(f"        File: {xsec_file}")
+        print(f"        Wavelength range: {wl_exo[0]:.4f} - {wl_exo[-1]:.4f} µm, {len(wl_exo)} points")
+        sources.append({
+            'label': label,
+            'path': xsec_file,
+            'wl': wl_exo,
+            'wl_wid': wl_wid_exo,
+            'xsec': xsec_exo,
+            'xsec_per_um': xsec_exo_per_um,
+        })
+
+    # Find and read reference file, if one exists for this molecule.
+    # A reference isn't required to show/compare the calculated sources
+    # with each other.
+    print("\nLooking for reference opacity...")
+    h5_file = find_reference_hdf5_file(args.molecule)
+    if h5_file is None:
+        print("  No reference opacity file found. Continuing without a reference; only calculated sources will be shown.")
+        reference = None
+    else:
         print(f"  Found: {h5_file}")
         wl_ref, wl_wid_ref, xsec_ref, actual_temp, actual_pres = read_reference_opacity(
             h5_file, args.temperature, args.pressure
         )
-        xsec_ref_per_um = xsec_ref / wl_wid_ref # Convert to per micron for plotting
+        xsec_ref_per_um = xsec_ref / wl_wid_ref  # Convert to per micron for plotting
         print(f"  Wavelength range: {wl_ref[0]:.4f} - {wl_ref[-1]:.4f} µm")
         print(f"  Data points: {len(wl_ref)}")
         print(f"  Using T={actual_temp}K, P={actual_pres}bar")
+        reference = {
+            'wl': wl_ref, 'wl_wid': wl_wid_ref, 'xsec_per_um': xsec_ref_per_um,
+            'xsec': xsec_ref, 'actual_temp': actual_temp, 'actual_pres': actual_pres,
+        }
 
-        # Interpolate to common grid
-        print("\nInterpolating to common wavelength grid...")
-        wl_common, xsec_exo_interp, xsec_ref_interp = interpolate_to_common_grid(
-                        wl_exo, xsec_exo, 
-                        wl_ref, xsec_ref
-                    )
-        print(f"  Common grid points: {len(wl_common)}")
+        # When a reference is available, compare every calculated source
+        # against it individually 
+        print("\nComparing each calculated source against the reference...")
+        for src in sources:
+            wl_common, xsec_interp, xsec_ref_interp = interpolate_to_common_grid(
+                src['wl'], src['xsec'],
+                reference['wl'], reference['xsec']
+            )
 
-        # Derive integrated cross-sections over the overlapping wavelength range
-        wl_overlap_min = np.amin(wl_common)*1.01
-        wl_overlap_max = np.amax(wl_common)/1.01
-        integrated_exo = calc_integrated(wl_exo, wl_wid_exo, xsec_exo_per_um, wl_overlap_min, wl_overlap_max)
-        integrated_ref = calc_integrated(wl_ref, wl_wid_ref, xsec_ref_per_um, wl_overlap_min, wl_overlap_max)
-        print(f"\nIntegrated cross-section over {wl_overlap_min:.4f}-{wl_overlap_max:.4f} µm:")
-        print(f"  ExoCross: {integrated_exo:.3e} cm²")
-        print(f"  Reference: {integrated_ref:.3e} cm²")
-        print(f"  Relative difference: {((integrated_exo - integrated_ref) / integrated_ref * 100):.3f}%")
+            wl_overlap_min = np.amin(wl_common) * 1.01
+            wl_overlap_max = np.amax(wl_common) / 1.01
+            integrated_src = calc_integrated(
+                src['wl'], src['wl_wid'], src['xsec_per_um'], wl_overlap_min, wl_overlap_max
+            )
+            integrated_ref = calc_integrated(
+                reference['wl'], reference['wl_wid'], reference['xsec_per_um'],
+                wl_overlap_min, wl_overlap_max
+            )
 
-        # Calculate residuals
-        residual, rel_error = calculate_residual(xsec_exo_interp, xsec_ref_interp)
-        
-        # Statistics
-        valid_mask = np.isfinite(rel_error)
-        mean_abs_error = np.mean(np.abs(residual[valid_mask]))
-        mean_rel_error = np.mean(np.abs(rel_error[valid_mask]))
-        
-        print(f"\nComparison statistics:")
-        print(f"  Mean absolute error: {mean_abs_error:.3e} cm²")
-        print(f"  Mean relative error: {mean_rel_error:.3%}")
-        print(f"  Max absolute error: {np.max(np.abs(residual[valid_mask])):.3e} cm²")
-        print(f"  Max relative error: {np.max(np.abs(rel_error[valid_mask])):.3%} at wl={wl_common[np.argmax(np.abs(rel_error[valid_mask]))]:.4f} µm")
-        
-        # Create plot
-        print("\nGenerating comparison plot...")
-        fig = make_comparison_plot(
-            wl_common, wl_exo, wl_ref,
-            xsec_exo_interp, xsec_ref_interp,
-            xsec_exo_per_um, xsec_ref_per_um,
-            args.molecule, args.temperature, args.pressure,
-            residual, rel_error,
-            wl_range=wl_range
-        )
-        
-        # Save plot
-        output_file = output_dir / f"opacity_comparison_{args.molecule}_T{int(args.temperature)}K_P{args.pressure}bar.png"
-        plt.savefig(output_file, dpi=250, bbox_inches='tight')
-        print(f"  Saved to: {output_file}")
-        
-        if args.show:
-            plt.show()
-        
-        plt.close(fig)
-        print("\nDone!")
-        
-    except Exception as e:
-        print(f"\nError: {e}", file=sys.stderr)
-        sys.exit(1)
+            residual, rel_error = calculate_residual(xsec_interp, xsec_ref_interp)
+            valid_mask = np.isfinite(rel_error)
+            mean_abs_error = np.mean(np.abs(residual[valid_mask]))
+            mean_rel_error = np.mean(np.abs(rel_error[valid_mask]))
+
+            print(f"\n  {src['label']} versus reference, overlap {wl_overlap_min:.4f}-{wl_overlap_max:.4f} µm:")
+            print(f"      Integrated cross-section -- source: {integrated_src:.3e} cm², reference: {integrated_ref:.3e} cm²")
+            print(f"      Relative difference (integrated): {((integrated_src - integrated_ref) / integrated_ref * 100):.3f}%")
+            print(f"      Mean absolute error: {mean_abs_error:.3e} cm², mean relative error: {mean_rel_error:.3%}")
+            print(f"      Max absolute error: {np.max(np.abs(residual[valid_mask])):.3e} cm²")
+            print(f"      Max relative error: {np.max(np.abs(rel_error[valid_mask])):.3%} at wl={wl_common[np.argmax(np.abs(rel_error[valid_mask]))]:.4f} µm")
+
+            src['wl_common'] = wl_common
+            src['residual'] = residual
+            src['rel_error'] = rel_error
+
+    # Create plot
+    print("\nGenerating comparison plot...")
+    fig = make_comparison_plot(
+        sources, reference,
+        args.molecule, args.temperature, args.pressure,
+        wl_range=wl_range
+    )
+
+    # Save plot
+    fmt = 'pdf'
+    output_file = output_dir / f"opacity_comparison_{args.molecule}_T{int(args.temperature)}K_P{args.pressure}bar.{fmt}"
+    plt.savefig(output_file, dpi=250, bbox_inches='tight')
+    print(f"  Saved to: {output_file}")
+
+    if args.show:
+        plt.show()
+
+    plt.close(fig)
+    print("\nDone!")
 
 
 if __name__ == "__main__":

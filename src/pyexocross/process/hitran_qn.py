@@ -297,7 +297,12 @@ def separate_QN_hitran(hitran_df,GlobalQNLabels,LocalQNupperLabels,LocalQNlowerL
         LQNu_df = LQNu_df.drop(columns=['Br'])    
     if 'Br' in LocalQNlowerLabels:
         # LQNl_df['Br'] = LQNl_df['Br'].map(lambda x: x[1]).replace(['Q','P','R','O','S'],[0,-1,1,-2,2])
-        br_char = LQNl_df['Br'].map(lambda x: x[1])
+        # The Br sub-field is 1 character wide for some molecule groups
+        # (e.g. CO, CO2, HCN - localQNgroup2a/2b) and 2 characters wide for
+        # others (NO, ClO, OH - localQNgroup7a/7b), so a fixed index (e.g.
+        # x[1]) is out of range for the 1-character case. The branch letter
+        # is always the field's only meaningful (non-space) character.
+        br_char = LQNl_df['Br'].map(lambda x: x.strip()[-1] if x.strip() else '')
         br_map = {'Q': 0, 'P': -1, 'R': 1, 'O': -2, 'S': 2}
         LQNl_df['Br'] = pd.to_numeric(br_char.map(br_map), errors='coerce')
         LQNl_df['J'] = pd.to_numeric(LQNl_df['J'])

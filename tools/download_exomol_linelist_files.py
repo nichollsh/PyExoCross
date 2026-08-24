@@ -12,6 +12,7 @@ urllib3.disable_warnings()
 ################## Could be changed ! ##################
 # Directory that will hold the generated api__urls.txt file
 url_dir = '/scratch/p321409/opacity_lbl/exomol/url/'
+
 # Full path to the urls file (derived from url_dir)
 url_path = os.path.join(url_dir, 'api__urls.txt')
 file_path = '/scratch/p321409/opacity_lbl/exomol/'
@@ -48,7 +49,7 @@ all_isotopologues = {
 }
 
 # get one molecule and its isotopologues
-molec = 'SiH4'
+molec = 'O2'
 molecule_isotopologues = dict([(molec, all_isotopologues.get(molec))])
 print('molecule_isotopologues:', molecule_isotopologues)
 
@@ -192,6 +193,7 @@ def get_urls(molecule_isotopologues):
                     # get recommended files for the dataset
                     if files_info.get('recommended'):
                         files_meta = files_info.get('files', [])
+                        print(files_meta)
                         nfiles = len(files_meta)
                         print("       recommended dataset", dataset, "has", nfiles, "file(s).")
                         trans_count = 0
@@ -216,8 +218,9 @@ def get_urls(molecule_isotopologues):
                             if iso_slug is None:
                                 print(f"Warning: Could not infer isotopologue slug from URL {url}. Skipping.")
                                 continue
+
                             if iso_slug not in target_isotopologue_config:
-                                print(f"Warning: Isotopologue {iso_slug} not in target isotopologue config for {molecules[i]}. Skipping.")
+                                # Isotopologue is not in target isotopologue config for molecule
                                 continue
 
                             # get wavenumber range
@@ -246,6 +249,14 @@ def get_urls(molecule_isotopologues):
                             else:
                                 # no luck...
                                 continue
+
+                        # we didn't pick up any trans files for this isotopologue and dataset
+                        # if trans_count == 0:
+                        #     if target_isotopologue_config is None or iso_slug in target_isotopologue_config:
+                        #         print(f'{molecules[i]} - {iso_slug or iso_formula} - {dataset}: no trans files found in API response.')
+
+                        #     # try looking manually...  
+                        #     trans_url = f"https://exomol.com/db/{molec}/{iso_slug}/{dataset}/{iso_slug}__{dataset}.trans
 
                         # record found isotopologue in the set
                         found_isotopologues.add(iso_slug)

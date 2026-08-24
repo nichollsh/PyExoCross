@@ -206,23 +206,20 @@ def _cupy_voigt_profile(cp, dv, sigma, gamma):
     gamma = cp.where(gamma > _EPS, gamma, cp.full_like(gamma, _EPS))
     inv_sqrt2 = 1.0 / np.sqrt(2.0)
     inv_sqrt2pi = 1.0 / np.sqrt(2.0 * np.pi)
-    try:
-        from cupyx.scipy.special import wofz as cp_wofz  # type: ignore
-        z = (dv + 1j * gamma[None, :]) / sigma[None, :] * inv_sqrt2
-        wz = cp_wofz(z)
-        out = cp.real(wz) / sigma[None, :] * inv_sqrt2pi
-        return cp.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
-    except Exception:
-        alpha = sigma * np.sqrt(2.0 * np.log(2.0))
-        return _cupy_humlicek_profile(cp, dv, alpha, gamma)
+
+    from cupyx.scipy.special import wofz as cp_wofz  # type: ignore
+    z = (dv + 1j * gamma[None, :]) / sigma[None, :] * inv_sqrt2
+    wz = cp_wofz(z)
+    out = cp.real(wz) / sigma[None, :] * inv_sqrt2pi
+    return cp.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
 
 
 def _torch_voigt_profile(torch, dv, sigma, gamma):
-    # Torch currently has no native wofz on all devices; use Humlicek approximation.
-    sigma = torch.where(sigma > _EPS, sigma, torch.full_like(sigma, _EPS))
-    gamma = torch.where(gamma > _EPS, gamma, torch.full_like(gamma, _EPS))
-    alpha = sigma * np.sqrt(2.0 * np.log(2.0))
-    return _torch_humlicek_profile(torch, dv, alpha, gamma)
+    # Torch has no native wofz/Faddeeva implementation on any device today.
+    raise NotImplementedError(
+        "Exact Voigt/Faddeeva (wofz) evaluation is not available on the Torch "
+        "GPU backend (CUDA or MPS); falling back to CPU for an exact result."
+    )
 
 
 def _to_backend_array(provider, mod, x, *, is_grid=False):
