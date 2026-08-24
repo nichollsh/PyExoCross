@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -272,7 +273,9 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
             for temp_idx, T, Tvib, Trot, Q in temp_info
             for P in P_per_temp[temp_idx]
         ]
-        
+        total_tp_points = len(tp_combinations)
+        tp_point_idx = 0
+
         # Process all (T, P) combinations in parallel
         with ThreadPoolExecutor(max_workers=ncputrans) as executor:
             if NLTEMethod in ('L', 'P'):
@@ -310,7 +313,9 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
                     # Save cross sections for this (T, P) combination
                     save_xsec_file_plot(wn_grid, xsec, database, profile_label, T, P, temp_idx, Tvib_list, Trot_list)
                     xsec_file_count += 1
-                    print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, 'Cross sections', None)
+                    tp_point_idx += 1
+                    print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, 'Cross sections', None,
+                                                   tp_point_idx, total_tp_points, time.time() - t.start_sys)
                     
                     # Clear memory
                     del xsec
@@ -325,6 +330,8 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
                 (temp_idx, T, Q, P_per_temp[temp_idx][0], Tvib, Trot)
                 for temp_idx, T, Tvib, Trot, Q in temp_info
             ]
+            total_tp_points = len(xsec_tasks)
+            tp_point_idx = 0
             if NLTEMethod in ('L', 'P'):
                 futures = {
                     executor.submit(
@@ -359,7 +366,9 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
                     # Save cross sections for this temperature
                     save_xsec_file_plot(wn_grid, xsec, database, profile_label, T, P, temp_idx, Tvib_list, Trot_list)
                     xsec_file_count += 1
-                    print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, None, abs_emi, NLTEMethod, 'Cross sections', None)
+                    tp_point_idx += 1
+                    print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, None, abs_emi, NLTEMethod, 'Cross sections', None,
+                                                   tp_point_idx, total_tp_points, time.time() - t.start_sys)
                     
                     # Clear memory
                     del xsec

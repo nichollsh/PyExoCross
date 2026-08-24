@@ -1,6 +1,7 @@
 """
 Save ExoMolHR cross sections.
 """
+import time
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
@@ -231,6 +232,8 @@ def save_exomolhr_cross_section(exomolhr_df, T_list, P_list, Tvib_list, Trot_lis
             
     any_results = False
     xsec_file_count = 0
+    total_tp_points = len(xsec_tasks)
+    tp_point_idx = 0
     print('Processing cross sections in parallel...')
     
     with _executor_context(max_workers=ncputrans) as executor:
@@ -254,7 +257,9 @@ def save_exomolhr_cross_section(exomolhr_df, T_list, P_list, Tvib_list, Trot_lis
                     any_results = True
                     save_xsec_file_plot(wn_grid, xsec, database, profile_label, T, P, temp_idx, Tvib_list, Trot_list)
                     xsec_file_count += 1
-                    print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P if pressure_dependent else None, abs_emi, NLTEMethod, 'Cross sections', None)
+                    tp_point_idx += 1
+                    print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P if pressure_dependent else None, abs_emi, NLTEMethod, 'Cross sections', None,
+                                                   tp_point_idx, total_tp_points, time.time() - t.start_sys)
                     del xsec
             except Exception as e:
                 print(f'Warning: Error processing cross sections for T={T} K, P={P} bar: {e}')

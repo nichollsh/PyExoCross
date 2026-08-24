@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import time
+import platform
 
 # Determine whether the folder exists or not.
 def ensure_dir(path):
@@ -72,8 +73,8 @@ class Timer:
         if args and isinstance(args[0], str):
             from pyexocross.base.result import add_timing
             add_timing(args[0], self.interval_CPU, self.interval_sys)
-        print('{:25s} : {}'.format('Running time on CPU', self.interval_CPU), 's')
-        print('{:25s} : {}'.format('Running time on system', self.interval_sys), 's')
+        # print('{:25s} : {}'.format('Running time on CPU', self.interval_CPU), 's')
+        # print('{:25s} : {}'.format('Running time on system', self.interval_sys), 's')
         
     def cal(self, *args):
         """
@@ -97,3 +98,32 @@ class Timer:
         self.interval_CPU = self.end_CPU - self.start_CPU
         self.interval_sys = self.end_sys - self.start_sys
         return(self.interval_CPU, self.interval_sys)
+
+# Track process memory usage, e.g. to help size Slurm '--mem' requests.
+def get_memory_usage_mb():
+    """
+    Return the process's current resident memory usage in MB.
+
+    Best-effort: returns None if memory usage can't be determined on this
+    platform, rather than raising, so callers can treat it as optional.
+
+    Returns
+    -------
+    float or None
+        Current resident set size (RSS) in MB, or peak RSS if current RSS
+        is unavailable. None if neither could be read.
+    """
+    try:
+        with open('/proc/self/status') as f:
+            for line in f:
+                if line.startswith('VmRSS:'):
+                    return int(line.split()[1]) / 1024.0
+    except OSError:
+        pass
+    try:
+        import resource
+        peak_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        # Linux reports ru_maxrss in KB, macOS in bytes.
+        return peak_kb / 1024.0 if platform.system() == 'Linux' else peak_kb / (1024.0 ** 2)
+    except Exception:
+        return None

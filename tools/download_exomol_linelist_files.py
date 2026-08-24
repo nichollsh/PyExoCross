@@ -126,30 +126,69 @@ def infer_iso_slug_from_url(url, dataset):
             # print(f"       slug from URL -> {slug}")
             return slug
 
+    # Segmented-by-wavenumber trans file, e.g. 1H2-16O__POKAZATEL__00000-00100.trans.bz2
     segmented_match = re.match(rf'^(.+)__{re.escape(dataset)}__\d+-\d+\.trans\.bz2$', filename)
     if segmented_match is not None:
         slug = segmented_match.group(1)
         # print(f"       slug from URL -> {slug}")
         return slug
-    
+
+    # Split-by-label trans file, e.g. 16O2__SWYT__M1.trans.bz2 / 16O2__SWYT__E2.trans.bz2
+    labeled_match = re.match(rf'^(.+)__{re.escape(dataset)}__[A-Za-z0-9]+\.trans\.bz2$', filename)
+    if labeled_match is not None:
+        slug = labeled_match.group(1)
+        # print(f"       slug from URL -> {slug}")
+        return slug
+
     return None
 
 
-def trans_url_in_wn_range(url, isotopologue, dataset, wn_range):
+def trans_split_kind(url, isotopologue, dataset):
+    '''
+    Classify a transition file URL against the given isotopologue/dataset.
+
+    Some ExoMol datasets split their transitions across several files that
+    are NOT wavenumber-segmented, e.g. by transition type
+    (16O2__SWYT__M1.trans.bz2, 16O2__SWYT__E2.trans.bz2). These "labeled"
+    files must all be downloaded regardless of wn_range, since wn_range
+    filtering only makes sense for wavenumber-segmented files.
+
+    Returns a tuple (kind, info):
+        ('single', None)       - the one-file whole-range trans file
+        ('range', (min, max))  - a wavenumber-range-segmented file
+        ('labeled', label)     - a non-wavenumber labeled split (e.g. 'M1')
+        (None, None)           - does not match this isotopologue/dataset
+    '''
     filename = os.path.basename(url)
     if filename == strict_trans_filename(isotopologue, dataset):
+        return 'single', None
+
+    range_match = strict_segmented_trans_pattern(isotopologue, dataset).match(filename)
+    if range_match is not None:
+        return 'range', (int(range_match.group(1)), int(range_match.group(2)))
+
+    labeled_match = re.match(
+        rf'^{re.escape(isotopologue)}__{re.escape(dataset)}__([A-Za-z0-9]+)\.trans\.bz2$',
+        filename,
+    )
+    if labeled_match is not None:
+        return 'labeled', labeled_match.group(1)
+
+    return None, None
+
+
+def trans_url_in_wn_range(url, isotopologue, dataset, wn_range):
+    kind, info = trans_split_kind(url, isotopologue, dataset)
+    if kind is None:
+        return False
+    if kind in ('single', 'labeled'):
         return True
 
-    match = strict_segmented_trans_pattern(isotopologue, dataset).match(filename)
-    if match is None:
-        return False
-
+    # kind == 'range'
     if wn_range in (None, []):
         return True
-
     wn_min, wn_max = wn_range
-    file_min = int(match.group(1))
-    file_max = int(match.group(2))
+    file_min, file_max = info
     return file_min >= wn_min and file_max <= wn_max
 
 
@@ -169,7 +208,7 @@ def get_urls(molecule_isotopologues):
         target_isotopologue_config = isotopologue_configs[i]
         if target_isotopologue_config is None:
             raise ValueError(
-                f"Isotopologues not provided for {molecules[i]}. "
+                f"\nIsotopologues not provided for {molecules[i]}. "
                 "Populate molecule_isotopologues with desired isotopologues."
             )
         response = requests.get(api_url[i], timeout=60)
@@ -178,13 +217,13 @@ def get_urls(molecule_isotopologues):
 
         # If the obtained status code is 200, it is correct.
         else:
-            print(f"Successfully retrieved API response for {molecules[i]}.")
+            print(f"\nSuccessfully retrieved API response for {molecules[i]}")
             content = response.text            # Get the relevant content.
             json_dict = json.loads(content)    # Convert json into dictionary.
             found_isotopologues = set()
             for iso_formula, iso_info in json_dict.items():
                 linelist_info = iso_info.get('linelist', {})
-                print(f"     isotopologue {iso_formula} for molecule {molecules[i]}.")
+                print(f"     isotopologue {iso_formula} for molecule {molecules[i]}")
                 for dataset, files_info in linelist_info.items():
                     # skip to the dictionary item
                     if not isinstance(files_info, dict):
@@ -193,9 +232,8 @@ def get_urls(molecule_isotopologues):
                     # get recommended files for the dataset
                     if files_info.get('recommended'):
                         files_meta = files_info.get('files', [])
-                        print(files_meta)
                         nfiles = len(files_meta)
-                        print("       recommended dataset", dataset, "has", nfiles, "file(s).")
+                        print("       recommended dataset", dataset, "has", nfiles, "file(s)")
                         trans_count = 0
                         trans_urls = []
                         states_url = None
@@ -221,6 +259,7 @@ def get_urls(molecule_isotopologues):
 
                             if iso_slug not in target_isotopologue_config:
                                 # Isotopologue is not in target isotopologue config for molecule
+                                print("        skipping unrequested isotopologue")
                                 continue
 
                             # get wavenumber range
@@ -237,11 +276,16 @@ def get_urls(molecule_isotopologues):
                         
                         # we didn't pick up a states file for this isotopologue and dataset
                         if states_url is None:
-                            if target_isotopologue_config is None or iso_slug in target_isotopologue_config:
-                                print(f'{molecules[i]} - {iso_slug or iso_formula} - {dataset}: no strict states file found.')
+                            # Not one of the requested isotopologues (or no slug could be
+                            # inferred at all) - don't fall back to guessing a states URL,
+                            # otherwise every isotopologue in the API response gets pulled in.
+                            if iso_slug is None or iso_slug not in target_isotopologue_config:
+                                continue
+
+                            print(f'{molecules[i]} - {iso_slug} - {dataset}: no strict states file found.')
 
                             # try looking manually...
-                            states_url = f"https://exomol.com/db/{molec}/{iso_slug}/{dataset}/{iso_slug}__{dataset}.states.bz2"
+                            states_url = f"https://exomol.com/db/{molecules[i]}/{iso_slug}/{dataset}/{iso_slug}__{dataset}.states.bz2"
                             if requests.head(states_url).status_code == 200:
                                 def_url = states_url.replace('.states.bz2','.def.json')
                                 pf_url = states_url.replace('.states.bz2','.pf')
@@ -251,19 +295,13 @@ def get_urls(molecule_isotopologues):
                                 continue
 
                         # we didn't pick up any trans files for this isotopologue and dataset
-                        # if trans_count == 0:
-                        #     if target_isotopologue_config is None or iso_slug in target_isotopologue_config:
-                        #         print(f'{molecules[i]} - {iso_slug or iso_formula} - {dataset}: no trans files found in API response.')
-
-                        #     # try looking manually...  
-                        #     trans_url = f"https://exomol.com/db/{molec}/{iso_slug}/{dataset}/{iso_slug}__{dataset}.trans
 
                         # record found isotopologue in the set
                         found_isotopologues.add(iso_slug)
                         start = len(urls)
                         urls.extend([def_url, pf_url, states_url])
                         urls.extend(trans_urls)
-                        print(f'{molecules[i]} - {iso_slug} - {dataset}: {trans_count} file(s) to download')
+                        print(f'        {molecules[i]} - {iso_slug} - {dataset}: {trans_count} file(s) to download')
                         for entry in urls[start:]:
                             print(f"       {entry}")
             

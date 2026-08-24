@@ -263,7 +263,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
                 else:
                     # Debug: Check data ranges
                     plot_unit = PlotCrossSectionUnit.replace('um', 'μm').replace('cm-1', 'cm⁻¹')
-                    print(f'Info: Plotting cross sections: {len(v_value)} points, x range: [{np.min(v_value):.2f}, {np.max(v_value):.2f}] {plot_unit}, xsec range: [{np.min(xsec_plot):.2e}, {np.max(xsec_plot):.2e}] {xsec_y_unit}, non-zero xsec count: {np.sum(xsec_plot > 0)}')
+                    # print(f'Info: Plotting cross sections: {len(v_value)} points, x range: [{np.min(v_value):.2f}, {np.max(v_value):.2f}] {plot_unit}, xsec range: [{np.min(xsec_plot):.2e}, {np.max(xsec_plot):.2e}] {xsec_y_unit}, non-zero xsec count: {np.sum(xsec_plot > 0)}')
             else:
                 print(f'Warning: xsec_plot is empty after filtering. Original xsec length: {len(xsec)}, non-zero xsec count: {np.sum(xsec > 0) if len(xsec) > 0 else 0}. Skipping plot.')
                 plt.close()
@@ -340,6 +340,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             plt.close()  # Close figure to free memory and ensure it's saved
             tp.end('save')
             print('Cross sections plot has been saved:', xsec_plotpath)
+            print(' ')
         else:
             pass
     elif 'L' in wn_wl:
@@ -478,6 +479,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             plt.close()  # Close figure to free memory and ensure it's saved
             tp.end('save')
             print('Cross sections plot has been saved:', xsec_plotpath)
+            print(' ')
         else:
             pass
     else:

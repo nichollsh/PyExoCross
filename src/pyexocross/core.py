@@ -348,7 +348,7 @@ def get_results(config, data=None):
                 lifetime_sum = np.zeros(len(states_df), dtype=float)
                 for trans_filepath in trans_filepaths:
                     trans_filename = sourcename(trans_filepath)
-                    print('Processing transitions file for predissociation lifetime:', trans_filename)
+                    print('\nProcessing transitions file for predissociation lifetime:', trans_filename)
                     use_cols = [0, 1, 2]
                     use_names = ['uid', 'lid', 'A']
                     trans_reader = read_trans_chunks(trans_filepath, use_cols, use_names)

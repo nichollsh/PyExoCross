@@ -79,4 +79,4 @@ def plot_oscillator_strength(oscillator_strength_df):
     plt.show()
     tp.end('save')
     print('Oscillator strengths plot has been saved:', os_plot)  
-    
+    print(' ')

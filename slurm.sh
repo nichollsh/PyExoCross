@@ -1,23 +1,26 @@
 #!/bin/bash
 
-# LEAVE
+# --------------------------
+# CHANGE THESE 
+
+#SBATCH --mem=128GB
+#SBATCH --time=00-07:30:00
+#SBATCH --cpus-per-task=40
+#SBATCH --job-nam
+e=xsec_CO
+CONFIG="input/CO_ExoMol_4thplus_xsec.inp"
+
+# ---------------------------
+# LEAVE THESE 
 #SBATCH --export=ALL
-#SBATCH --job-name=pyexocross
 #SBATCH --output=slurm-%x-%j-stdout.log
 #SBATCH --error=slurm-%x-%j-stderr.log
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
 
-# CHANGE
-#SBATCH --gpus-per-node=1
-#SBATCH --mem=256GB
-#SBATCH --time=01-00:00:00
-#SBATCH --cpus-per-task=30
-
-# CONFIG="input/H2_ExoMol_RACPPK_xsec.inp"
-CONFIG="input/H2O_ExoMol_POKAZATEL_xsec.inp
-
+# ---------------------------
+# Dispatch the job
 
 echo "Home dir:          $HOME"
 source $HOME/.bashrc

@@ -242,7 +242,7 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
     """   
     from pyexocross.core import ncputrans
     trans_filename = sourcename(trans_filepath)
-    print('Processing transitions file:', trans_filename)
+    print('\nProcessing transitions file:', trans_filename)
     use_cols = [0,1,2]
     use_names = ['uid','lid','A']
     large_file = is_large_trans_file(trans_filepath)

@@ -5,6 +5,7 @@ This module provides functions for calculating and saving cross sections
 from ExoMol database files.
 """
 import os
+import time
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
@@ -489,7 +490,7 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
         ncputrans,
     )
     trans_filename = sourcename(trans_filepath)
-    print('Processing transitions file:', trans_filename)
+    print('\nProcessing transitions file:', trans_filename)
     if DopplerHWHMYN == 'U' and LorentzianHWHMYN == 'U':
         use_cols = [0,1,2,alpha_hwhm_colid, gamma_hwhm_colid]
         use_names = ['uid','lid','A','alpha_hwhm', 'gamma_hwhm']
@@ -535,7 +536,7 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
                 for future in log_tqdm(
                     completed,
                     total=len(futures),
-                    desc='Calculating chunks ' + trans_filename,
+                    desc='Calculating xsecs for chunks ' + trans_filename,
                 ):
                     xsecs += future.result()
     return xsecs
@@ -630,6 +631,8 @@ def save_exomol_cross_section(
     # Process each (T, P) combination separately to save memory
     any_results = False
     xsec_file_count = 0
+    total_tp_points = sum(len(P_per_temp[temp_idx]) if pressure_dependent else 1 for temp_idx in range(ntemp))
+    tp_point_idx = 0
     for temp_idx in log_tqdm(range(ntemp), desc='\nProcessing cross sections'):
         T, Tvib, Trot = get_temp_vals(temp_idx, NLTEMethod, T_list, Tvib_list, Trot_list)
         
@@ -653,7 +656,9 @@ def save_exomol_cross_section(
                 # Save cross sections for this (T, P) combination
                 save_xsec_file_plot(wn_grid, xsec, database, profile_label, T, P, temp_idx, Tvib_list, Trot_list)
                 xsec_file_count += 1
-                print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, 'Cross sections', None)
+                tp_point_idx += 1
+                print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, 'Cross sections', None,
+                                               tp_point_idx, total_tp_points, time.time() - tot.start_sys)
                 
                 # Clear memory
                 del xsec
@@ -678,7 +683,9 @@ def save_exomol_cross_section(
             # Save cross sections for this temperature
             save_xsec_file_plot(wn_grid, xsec, database, profile_label, T, P, temp_idx, Tvib_list, Trot_list)
             xsec_file_count += 1
-            print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, None, abs_emi, NLTEMethod, 'Cross sections', None)
+            tp_point_idx += 1
+            print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, None, abs_emi, NLTEMethod, 'Cross sections', None,
+                                           tp_point_idx, total_tp_points, time.time() - tot.start_sys)
             
             # Clear memory
             del xsec

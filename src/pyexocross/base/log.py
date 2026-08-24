@@ -8,7 +8,7 @@ import platform
 import subprocess
 from tqdm import tqdm
 from contextlib import contextmanager
-from .utils import Timer, ensure_dir
+from .utils import Timer, ensure_dir, get_memory_usage_mb
 
 _ORIGINAL_STDOUT = sys.stdout
 _ORIGINAL_STDERR = sys.stderr
@@ -800,7 +800,8 @@ def print_xsec_info(profile_label, cutoff, UncFilter, min_wnl, max_wnl,
     print('{:25s} : {}'.format('Broadeners', str(broad).replace('[','').replace(']','').replace("'",'')))
     print('{:25s} : {}\n'.format('Ratios', str(ratio).replace('[','').replace(']','')))
 
-def print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, stick_xsec_str, file_path):
+def print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, stick_xsec_str, file_path,
+                                   point_idx=None, total_points=None, elapsed_sys=None):
     """
     Print temperature, vibrational temperature, and rotational temperature information.
 
@@ -812,6 +813,12 @@ def print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, stick_x
         Vibrational temperature in unit of K
     Trot : float
         Rotational temperature in unit of K
+    point_idx : int, optional
+        Number of T/P points completed so far (including this one)
+    total_points : int, optional
+        Total number of T/P points to process in this run
+    elapsed_sys : float, optional
+        Wall-clock seconds elapsed since the run started
     """
     P_str = f', P={P} bar' if P is not None else ''
     file_path_str = f': {file_path}' if file_path is not None else ''
@@ -839,3 +846,21 @@ def print_T_Tvib_Trot_P_path_info(T, Tvib, Trot, P, abs_emi, NLTEMethod, stick_x
             raise ValueError("Please choose one LTE or non-LTE method from: 'L', 'T', 'D' or 'P'.")
     else:
         raise ValueError("Please choose one from: 'Absorption' or 'Emission'.")
+
+    if point_idx is not None and total_points:
+        pct = 100.0 * point_idx / total_points
+        elapsed_hrs = float(datetime.timedelta(seconds=round(elapsed_sys)).total_seconds()) / 3600.0
+        elapsed_str = "{:.2f} hrs".format(elapsed_hrs)
+
+        rate = point_idx / elapsed_sys if elapsed_sys and elapsed_sys > 0 else 0.0
+        if rate > 0:
+            eta_sys = (total_points - point_idx) / rate
+            eta_hrs = float(datetime.timedelta(seconds=round(eta_sys)).total_seconds()) / 3600.0
+            eta_str = "{:.2f} hrs".format(eta_hrs)
+        else:
+            eta_str = 'unknown'
+        mem_mb = get_memory_usage_mb()
+        mem_str = f' | Memory: {mem_mb:.0f} MB' if mem_mb is not None else ''
+        print(f'Progress: {point_idx}/{total_points} TPpoints ({pct:.1f}%) '
+              f'| Elapsed: {elapsed_str} | ETA: {eta_str} | Rate: {rate * 60:.2f} TPpoints/min{mem_str}')
+        print("-"*70)

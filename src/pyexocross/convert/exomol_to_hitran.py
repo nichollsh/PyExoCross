@@ -549,7 +549,7 @@ def process_exomol2hitran_linelist(states_df, trans_filepath):
     global _USE_THREAD_POOL
     _ensure_conversion_globals()
     trans_filename = sourcename(trans_filepath)
-    print('Processing transitions file:', trans_filename)
+    print('\nProcessing transitions file:', trans_filename)
     use_cols = [0,1,2]
     use_names = ['uid','lid','A']
     large_file = is_large_trans_file(trans_filepath)
