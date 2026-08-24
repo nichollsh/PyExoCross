@@ -6,9 +6,8 @@
 #SBATCH --mem=128GB
 #SBATCH --time=00-07:30:00
 #SBATCH --cpus-per-task=40
-#SBATCH --job-nam
-e=xsec_CO
-CONFIG="input/CO_ExoMol_4thplus_xsec.inp"
+#SBATCH --job-name=xsec_H2O
+CONFIG="input/H2O_ExoMol_POKAZATEL_xsec.inp"
 
 # ---------------------------
 # LEAVE THESE 

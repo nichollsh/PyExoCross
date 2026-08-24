@@ -54,6 +54,7 @@ LABEL_PREFIXES = (
     "AFGL:",
 )
 
+UNC_DEFAULT = 0.1  # default uncertainty value to write in xsec input files
 
 def _sanitize_label(label: str) -> str:
     return re.sub(r"\s+", "", label.strip())
@@ -119,11 +120,11 @@ def _replace_line(lines: List[str], key: str, value: str) -> bool:
     return False
 
 
-def _update_unc_filter(lines: List[str], has_uncertainty: bool) -> None:
+def _update_unc_filter(lines: List[str], has_uncertainty: bool, unc_default: float) -> None:
     value = "Y" if has_uncertainty else "N"
     for idx, line in enumerate(lines):
         if line.lstrip().startswith("UncFilter(Y/N)"):
-            lines[idx] = f"{'UncFilter(Y/N)':<40}{value}          0.01\n"
+            lines[idx] = f"{'UncFilter(Y/N)':<40}{value}          {unc_default}\n"
             return
 
 
@@ -352,7 +353,7 @@ def generate_hitran_inputs(
         ):
             raise ValueError("Template must include a 'QNsFilter(Y/N)' line.")
         # HITRAN linelists always carry per-line uncertainty codes.
-        _update_unc_filter(out_lines, has_uncertainty=True)
+        _update_unc_filter(out_lines, has_uncertainty=True, unc_default=UNC_DEFAULT)
 
         filename = (
             f"{species}_{isotopologue}_HITRAN_xsec.inp" if multi_iso else f"{species}_HITRAN_xsec.inp"
@@ -473,7 +474,7 @@ def generate_inputs(
             f"N          {'  '.join(f'{label}[]' for label in labels)}",
         ):
             raise ValueError("Template must include a 'QNsFilter(Y/N)' line.")
-        _update_unc_filter(out_lines, entry["has_uncertainty"])
+        _update_unc_filter(out_lines, entry["has_uncertainty"], unc_default=UNC_DEFAULT)
 
         filename = _output_name(
             database=database,
