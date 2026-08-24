@@ -113,7 +113,8 @@ def _normalize_hitran_configs(species_info, timeout=60):
                 raise ValueError(f'HITRAN config for {molecule}/{isotopologue} must be a dict.')
             wn_range = config.get('wn_range')
             if wn_range is None:
-                raise ValueError(f'HITRAN config for {molecule}/{isotopologue} requires wn_range.')
+                print(f'HITRAN config for {isotopologue} requires wn_range. Setting to default [1e-1, 1e7] cm-1.')
+                wn_range = [1e-1, 1e7]
             meta = _resolve_iso_meta(molecule, isotopologue, timeout=timeout)
             normalized.append((molecule, isotopologue, meta, wn_range))
     return normalized
