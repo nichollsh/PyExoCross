@@ -23,7 +23,7 @@ CONFIG="input/H2O_ExoMol_POKAZATEL_xsec.inp"
 
 echo "Home dir:          $HOME"
 source $HOME/.bashrc
-conda activate exocross
+conda activate xsec
 
 echo "Python:            $(which python)"
 echo "TMPDIR:            $TMPDIR"
