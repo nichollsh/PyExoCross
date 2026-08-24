@@ -17,6 +17,7 @@ from ..process.stick_xsec_filepath import (
 )
 from .mpl_safety import configure_mpl_large_path_rendering
 
+DPI = 200
 
 def _axis_values_from_wavenumber(wn, values, axis_kind, axis_unit):
     """Return paired x/value arrays in the requested axis unit, sorted by x."""
@@ -336,7 +337,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
                              + '__thres' + str(threshold) + '__' + database + '__' + abs_emi
                              + crosssectiondetails(bin_size, bin_unit_fn, cutoff, profile_label)
                              + photo + LTE_NLTE + '.png')
-            plt.savefig(xsec_plotpath, dpi=500)
+            plt.savefig(xsec_plotpath, dpi=DPI)
             plt.close()  # Close figure to free memory and ensure it's saved
             tp.end('save')
             print('Cross sections plot has been saved:', xsec_plotpath)
@@ -464,7 +465,6 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             #plt.title(database+' '+data_info[0]+' '+abs_emi+' Cross-Section with '+ profile_label) 
             plt.xlabel(plot_unit_str)
             plt.ylabel(f'Cross-section, {xsec_y_unit}')
-            plt.legend(loc='upper left')  # Place legend in upper right corner
             leg = plt.legend(loc='upper right')                  # Get the legend object.
             for line in leg.get_lines():
                 line.set_linewidth(1.0)         # Change the line width for the legend.
@@ -475,7 +475,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
                              +'__thres'+str(threshold)+'__'+database+'__'+abs_emi 
                              + crosssectiondetails(bin_size, unit_ffn, cutoff, profile_label)
                              + photo + LTE_NLTE + '.png')
-            plt.savefig(xsec_plotpath, dpi=500)
+            plt.savefig(xsec_plotpath, dpi=DPI)
             plt.close()  # Close figure to free memory and ensure it's saved
             tp.end('save')
             print('Cross sections plot has been saved:', xsec_plotpath)
