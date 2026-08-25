@@ -247,16 +247,33 @@ def print_cpu_device_info(prefix='CPU'):
     print("Processor:", info['processor'])
     print("CPU model:", info['cpu_model'])
     print("Logical cores:", info['logical_cores'])
+
     # Optional richer summary when available.
     try:
         out = subprocess.run(['lscpu'], capture_output=True, text=True, check=True)
         lines = [ln for ln in out.stdout.splitlines() if ln.startswith(('Architecture:', 'CPU(s):', 'Model name:'))]
         if lines:
-            print("\n[lscpu]")
+            print(" ")
+            print("lscpu:")
             for ln in lines:
-                print(ln)
+                print("  " + ln)
     except Exception:
         pass
+
+    # Print version of pyexocross if available
+    from pyexocross import __version__ as pyexocross_version
+    print(" ")
+    print("PyExoCross version: ", pyexocross_version)
+
+    # Print git revision of pyexocross if available
+    try:
+        out = subprocess.run(['git', 'rev-parse', 'HEAD'], 
+                             capture_output=True, text=True, check=True,
+                             cwd=os.path.dirname(os.path.abspath(__file__)))
+        git_revision = out.stdout.strip()
+    except Exception:
+        git_revision = 'unknown'
+    print("PyExoCross git hash:", git_revision)
 
 
 def normalize_logging_path(value):
