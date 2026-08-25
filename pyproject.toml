@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pyexocross"
 version = "1.2.0"
-description = "A Python package for generating molecular and atomic spectra and cross sections"
+description = "A Python package for generating molecular and atomic spectra and cross sections. Forked from the original repo with improvements and fixes."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 license = {text = "GPL-3.0"}
 authors = [
     {name = "Jingxin Zhang", email = "jingxin.zhang.19@ucl.ac.uk"},
@@ -20,26 +20,24 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 dependencies = [
-    "numpy>=1.20.0,<2.0.0",
-    "pandas>=1.4.0,<3.0.0",
-    "pyarrow>=10.0.0,<24.0.0",
-    "scipy>=1.7.0,<2.0.0",
-    "matplotlib>=3.5.0,<4.0.0",
-    "tqdm>=4.64.0,<5.0.0",
-    "tabulate>=0.8.9,<1.0.0",
-    "numexpr>=2.7.0,<3.0.0",
-    "astropy>=5.0.0,<7.0.0",
-    "dask>=2022.5.0,<2025.0.0",
+    "numpy>=1.20.0",
+    "pandas>=1.4.0",
+    "pyarrow>=10.0.0",
+    "scipy>=1.17.0,<2.0.0",
+    "matplotlib>=3.11.0,<4.0.0",
+    "tqdm>=4.70.0,<5.0.0",
+    "tabulate>=0.10.0,<1.0.0",
+    "numexpr>=2.14.0,<3.0.0",
+    "astropy>=5.0.0",
+    "dask>=2022.5.0",
     "pandarallel>=1.6.5,<2.0.0",
-    "requests>=2.25.1,<3.0.0",
+    "requests>=2.34.0,<3.0.0",
 ]
 
 [project.scripts]
@@ -63,7 +61,7 @@ Publication = "https://doi.org/10.1093/rasti/rzae016"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["pyexocross*"]
-exclude = ["test*", "docs*", "input*", "output*", "ExoMol_extra_tools*"]
+exclude = ["test*", "docs*", "input*", "output*", "tools*"]
 
 [tool.setuptools.package-data]
 pyexocross = ["*.txt", "*.md", "database/meta/*.txt"]
