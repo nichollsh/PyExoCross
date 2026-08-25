@@ -6,13 +6,11 @@
 
 ## PyExoCross Python Package
 
-*PyExoCross* ***PyPI*** : [https://pypi.org/project/pyexocross/](https://pypi.org/project/pyexocross/)
-
 *PyExoCross* ***API Reference*** : [https://pyexocross.readthedocs.io/en/latest/python_api/index.html](https://pyexocross.readthedocs.io/en/latest/python_api/index.html)
 
 ## PyExoCross Python Program
 
-*PyExoCross* ***GitHub*** : [https://github.com/Beryl-Jingxin/PyExoCross](https://github.com/Beryl-Jingxin/PyExoCross)
+*PyExoCross* ***GitHub*** : [https://github.com/nichollsh/PyExoCross](https://github.com/nichollsh/PyExoCross)
 
 *PyExoCross* ***Manual*** : [https://pyexocross.readthedocs.io](https://pyexocross.readthedocs.io)
 

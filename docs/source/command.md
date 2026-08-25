@@ -2,16 +2,16 @@
 
 ## Download PyExoCross
 
-Download PyExoCross from [GitHub](https://github.com/Beryl-Jingxin/PyExoCross.git "GitHub").
+Download PyExoCross from [GitHub](https://github.com/nichollsh/PyExoCross.git "GitHub").
 
 ```bash
-git clone https://github.com/Beryl-Jingxin/PyExoCross.git
+git clone https://github.com/nichollsh/PyExoCross.git
 ```
 
 ## Install Python packages
 
 ```bash
-pip install -r requirements.txt
+pip install -Ue .
 ```
 
 ## Run PyExoCross
