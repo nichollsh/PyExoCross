@@ -498,12 +498,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--database",
-        default="ExoMol",
+        default=None,
         choices=["ExoMol", "ExoAtom", "HITRAN"],
         help="Database to target (ExoMol, ExoAtom, or HITRAN).",
     )
     parser.add_argument(
         "--molecule",
+        default=None,
         help="Molecule name for ExoMol/HITRAN (e.g., CO, H2O)."
     )
     parser.add_argument(
@@ -529,15 +530,23 @@ def main() -> None:
     args = parser.parse_args()
 
     database = args.database
+    if database is None:
+        raise ValueError("Database must be specified with --database.")
+    
     species = args.molecule
+    if species is None:
+        raise ValueError("Molecule/atom name must be specified with --molecule.")
+
     template = args.template
     if template is None:
         if database == "ExoMol":
             template = "input/templates/CO_ExoMol_template.inp"
         elif database == "ExoAtom":
             template = "input/templates/Na_ExoAtom_template.inp"
-        else:
+        elif database == "HITRAN":
             template = "input/templates/H2O_HITRAN_template.inp"
+        else:
+            raise ValueError("Template must be specified for unknown database.")
 
     if database == "HITRAN" and args.species_id:
         print("Note: --species-id is ignored for HITRAN; SpeciesID is resolved per isotopologue.")

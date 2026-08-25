@@ -177,7 +177,7 @@ PARAMETERS_BY_FUNCTION = {
     | COMPUTE_PARAMETERS | {
         'plot_cross_section_yn', 'plot_cross_section_method',
         'plot_cross_section_wn_wl', 'plot_cross_section_unit',
-        'limit_yaxis_xsec',
+        'limit_yaxis_xsec', 'compress_xsec_yn',
     },
 }
 

@@ -33,6 +33,13 @@ GPUBatchLines                           8192                      # GPU line-bat
 GPUBatchGrid                            1024                       # GPU grid-batch size (only used when RunMode=GPU)
 
 
+# Parquet transition cache #
+Cache                                   NONE                      # None(default, disabled), Auto (memory for small inputs, Parquet for large), or Parquet (always cache to disk)
+CacheDir                                AUTO                      # AUTO(default) uses a source-adjacent .pyexocross_cache/ directory; or set an explicit path (only used when Cache!=None)
+MaxMemory                               512                       # Max MB of transition data kept in memory before spilling to Parquet (only used when Cache=Auto)
+RefreshCache(Y/N)                       N                         # If Y, rebuild matching Parquet cache files instead of reusing them (only used when Cache!=None)
+
+
 # Quantum numbers for conversion, stick spectra and cross sections #
 QNslabel                                +/-  e/f  ElecState  v  Lambda  Sigma  Omega
 QNsformat                               %1s  %1s  %12s  %3d  %5d  %5d  %5d
@@ -82,6 +89,7 @@ Ratios                                  1.0
 Profile                                 SciPyVoigt                # or HumlicekVoigt
 Wavenumber(wn)/wavelength(wl)           wn                        # 'wn' or 'wl'
 PredissocXsec(Y/N)                      N
+CompressXsec(Y/N)                       Y                         # If Y, save as .xsec.bz2 (fast bz2, speed over ratio); otherwise, save as .xsec
 Cutoff(Y/N)                             Y          40             # If Y, default value 25 cm-1
 DopplerHWHM(Y/N)                        N          0.1            # Set Doppler HWHM as a constant 
 LorentzianHWHM(Y/N)                     N          0.5            # Set Lorentzian HWHM as a constant

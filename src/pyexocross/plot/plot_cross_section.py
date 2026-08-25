@@ -5,6 +5,7 @@ This module provides functions for plotting and saving cross-section data.
 """
 import os
 import shutil
+import bz2
 import datetime
 import numpy as np
 import pandas as pd
@@ -62,6 +63,22 @@ def _axis_values_from_wavenumber(wn, values, axis_kind, axis_unit):
     return x_value[order], value_out[order], unit_fn, axis_label
 
 
+def _save_xsec_array(filepath, xsec_df, fmt, compress_yn):
+    """Write a cross-section array, optionally bz2-compressing it to <filepath>.bz2.
+
+    Uses bz2's fastest level (1), since this runs immediately after every
+    cross-section file is written and should prioritize speed over ratio.
+    Returns the actual path written to.
+    """
+    if compress_yn == 'Y':
+        filepath = filepath + '.bz2'
+        with bz2.open(filepath, 'wt', compresslevel=1) as f:
+            np.savetxt(f, xsec_df, fmt=fmt)
+    else:
+        np.savetxt(filepath, xsec_df, fmt=fmt)
+    return filepath
+
+
 # Plot and Save Results
 def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_idx=None,
                         Tvib_list_param=None, Trot_list_param=None):
@@ -108,6 +125,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
         cutoff,
         T_list,
         inp_filepath,
+        CompressXsecYN,
     )
     wn = np.asarray(wn)
     xsec = np.asarray(xsec)
@@ -209,7 +227,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             NLTEMethod,
             pressure_dependent,
         )
-        np.savetxt(xsec_filepath, xsec_df, fmt="%15.6f %15.8E")
+        xsec_filepath = _save_xsec_array(xsec_filepath, xsec_df, "%15.6f %15.8E", CompressXsecYN)
         ts.end('save')
         # File info printed once by caller
         print('Cross sections file has been saved:', xsec_filepath)
@@ -393,7 +411,7 @@ def save_xsec_file_plot(wn, xsec, database, profile_label, T=None, P=None, temp_
             NLTEMethod,
             pressure_dependent,
         )
-        np.savetxt(xsec_filepath, xsec_df, fmt="%15.8E %15.8E")
+        xsec_filepath = _save_xsec_array(xsec_filepath, xsec_df, "%15.8E %15.8E", CompressXsecYN)
         ts.end('save')
         # File info printed once by caller
         print('Cross sections file has been saved:', xsec_filepath)       

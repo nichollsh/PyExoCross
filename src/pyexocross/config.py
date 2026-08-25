@@ -263,7 +263,21 @@ class Config:
             self.predissoc_yn = 'Y' if _predissoc else 'N'
         else:
             self.predissoc_yn = _predissoc
-        
+
+        # Compress cross section (.xsec) output files: bool (new) or legacy 'Y'/'N' string.
+        # Disabled by default; uses bz2 at a low compression level (speed over ratio).
+        _compress_xsec_default = getattr(self, 'compress_xsec_yn', False)
+        if isinstance(_compress_xsec_default, str):
+            _compress_xsec_default = (_compress_xsec_default == 'Y')
+
+        _compress_xsec = kwargs.get(
+            'compress_xsec', kwargs.get('compress_xsec_yn', _compress_xsec_default)
+        )
+        if isinstance(_compress_xsec, bool):
+            self.compress_xsec_yn = 'Y' if _compress_xsec else 'N'
+        else:
+            self.compress_xsec_yn = _compress_xsec
+
         # Broadening
         self.broadeners = kwargs.get('broadeners', getattr(self, 'broadeners', ['Default']))
         self.ratios = kwargs.get('ratios', getattr(self, 'ratios', [1.0]))
@@ -591,6 +605,13 @@ class Config:
             params = list(params)
             params[17:17] = ['AUTO']
             params = tuple(params)
+        if len(params) == 98:
+            # Older cached tuples predate the Cache/CacheDir/MaxMemory/RefreshCache
+            # keywords; default to the same values previously hardcoded below.
+            params = tuple(params) + ('auto', None, 512, False)
+        if len(params) == 102:
+            # Older cached tuples predate the CompressXsec(Y/N) keyword.
+            params = tuple(params) + ('N',)
 
         # Unpack all parameters (matching inp_para return structure)
         (self.database, self.data_info, self.read_path, self.save_path, self.logs_path,
@@ -622,13 +643,15 @@ class Config:
          self.plot_stick_spectra_wn_wl, self.plot_stick_spectra_unit, self.limit_yaxis_stick_spectra,
          self.tvib_list, self.trot_list, self.vib_label, self.rot_label,
          self.plot_cross_section_yn, self.plot_cross_section_method,
-         self.plot_cross_section_wn_wl, self.plot_cross_section_unit, self.limit_yaxis_xsec) = params
+         self.plot_cross_section_wn_wl, self.plot_cross_section_unit, self.limit_yaxis_xsec,
+         self.cache, self.cache_dir, self.max_memory, self.refresh_cache,
+         self.compress_xsec_yn) = params
         self.device = self.run_mode
-        self.cache = 'auto'
-        self.cache_dir = None
-        self.max_memory = 512
-        self.refresh_cache = False
-    
+        if self.cache not in ('auto', 'parquet', 'none'):
+            raise ValueError("cache must be 'auto', 'parquet', or 'none'.")
+        if self.max_memory < 0:
+            raise ValueError('max_memory must be zero or a positive number of MB.')
+
     def to_globals(self):
         """
         Set global variables from configuration.
@@ -744,8 +767,9 @@ class Config:
             'plot_cross_section_wn_wl': 'PlotCrossSectionWnWl',
             'plot_cross_section_unit': 'PlotCrossSectionUnit',
             'limit_yaxis_xsec': 'limitYaxisXsec',
+            'compress_xsec_yn': 'CompressXsecYN',
         }
-        
+
         # Set variables in core module's globals
         for attr_name, legacy_name in globals_map.items():
             if hasattr(self, attr_name):
@@ -891,5 +915,6 @@ class Config:
             'plot_cross_section_wn_wl': 'PlotCrossSectionWnWl',
             'plot_cross_section_unit': 'PlotCrossSectionUnit',
             'limit_yaxis_xsec': 'limitYaxisXsec',
+            'compress_xsec_yn': 'CompressXsecYN',
         }
         return name_map.get(key, key)

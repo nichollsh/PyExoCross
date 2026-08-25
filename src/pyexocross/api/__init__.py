@@ -859,6 +859,11 @@ def cross_sections(inp_filepath=None, **kwargs):
         gamma_hwhm : float or None, optional
             Constant Lorentzian HWHM value. ``None`` to calculate from
             broadening parameters (default: ``None``).
+        compress_xsec : bool, optional
+            ``True`` to bz2-compress each ``.xsec`` file immediately after
+            it is written, saving it as ``.xsec.bz2`` (fastest bz2 level,
+            prioritizing speed over ratio). ``False`` for uncompressed
+            (default: ``False``).
         plot : bool, optional
             Whether to plot results (default: ``False``).
         plot_method : str, optional

@@ -101,6 +101,19 @@ GPUBatchLines                           8192
 GPUBatchGrid                            256
 ```
 
+## Parquet Transition Cache
+
+All four of these keywords are optional.
+
+| `.inp` Keyword | Python Kwarg | `.inp` Format | Python Type |
+|---|---|---|---|
+| `Cache` | `cache` | `AUTO` / `Parquet` / `None` | `'auto'` / `'parquet'` / `'none'` (str, default `'auto'`) |
+| `CacheDir` | `cache_dir` | `AUTO` or an explicit path | `None` or `str` (default `None`, i.e. a source-adjacent `.pyexocross_cache/` directory) |
+| `MaxMemory` | `max_memory` | `512` | `512` (int, MB, default `512`; only used when `Cache=Auto`) |
+| `RefreshCache(Y/N)` | `refresh_cache` (or `refresh`) | `Y` or `N` | `True` / `False` (bool, default `False`) |
+
+Note: because pandas' `.inp` parser treats a literal `None` cell as a missing value, write `NONE` (not `None`) for `Cache`. Write `AUTO` when requesting the default behaviours.
+
 **Python API**
 
 ```python
@@ -231,6 +244,7 @@ All stick spectra parameters above, plus:
 | `Profile` | `profile` | `SciPyVoigt` | `'SciPyVoigt'` |
 | `Cutoff(Y/N)` | `cutoff` | `Y 25` | `25.0` (or `None` for `N`) |
 | `PredissocXsec(Y/N)` | `predissociation` | `Y` or `N` | `True` or `False` |
+| `CompressXsec(Y/N)` | `compress_xsec` | `Y` or `N` | `True` or `False` (default `False`) |
 | `Broadeners` | `broadeners` | `H2 He` | `['H2', 'He']` |
 | `Ratios` | `ratios` | `0.85 0.15` | `[0.85, 0.15]` |
 | `DopplerHWHM(Y/N)` | `alpha_hwhm` | `Y 3.0` | `3.0` (or `None` for `N`) |
@@ -244,6 +258,12 @@ All stick spectra parameters above, plus:
 means 0.01 nm for `wl nm`, 0.01 μm for `wl um`, and 0.01 cm⁻¹ for
 `wn cm-1`. The saved `.xsec` first column follows `WnWlUnit`; plotting can use
 a different coordinate via `PlotCrossSectionWnWl`.
+
+`CompressXsec(Y/N)` bz2-compresses each `.xsec` file immediately after it is
+written, saving it as `.xsec.bz2` instead. It uses bz2's fastest level (not
+the higher, slower-but-smaller default level used by `Compress(Y/N)` for
+`.states` files), since it prioritizes compression speed over ratio.
+Disabled (`N`) by default; the bundled templates leave it disabled.
 
 ---
 

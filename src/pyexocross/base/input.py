@@ -314,7 +314,35 @@ def inp_para(inp_filepath):
     if run_mode == 'GPU':
         print('GPU backend requested :', gpu_backend)
         print('GPU batching (lines/grid):', gpu_batch_lines, '/', gpu_batch_grid, '\n')
-    
+
+    # Parquet transition cache (optional keywords; disabled unless requested).
+    cache_rows = inp_df[col0.isin(['Cache'])]
+    if cache_rows.empty:
+        cache = 'auto'
+    else:
+        _cache_val = cache_rows[1].iloc[0]
+        cache = 'none' if pd.isna(_cache_val) else str(_cache_val).strip().lower()
+    if cache not in ('auto', 'parquet', 'none'):
+        raise ValueError("Please set Cache to 'AUTO', 'Parquet', or 'NONE' in the input file.")
+    cache_dir_rows = inp_df[col0.isin(['CacheDir'])]
+    if not cache_dir_rows.empty:
+        _cache_dir_val = cache_dir_rows[1].iloc[0]
+        if pd.isna(_cache_dir_val) or str(_cache_dir_val).strip().upper() in ('AUTO', 'NONE', ''):
+            cache_dir = None
+        else:
+            cache_dir = str(_cache_dir_val).strip()
+    else:
+        cache_dir = None
+    max_memory_rows = inp_df[col0.isin(['MaxMemory'])]
+    max_memory = int(max_memory_rows[1].iloc[0]) if not max_memory_rows.empty else 512
+    if max_memory < 0:
+        raise ValueError('MaxMemory must be zero or a positive number of MB.')
+    refresh_cache_rows = inp_df[col0.isin(['RefreshCache(Y/N)'])]
+    refresh_cache = (
+        str(refresh_cache_rows[1].iloc[0]).strip().upper().startswith('Y')
+        if not refresh_cache_rows.empty else False
+    )
+
     # Quantum numbers
     NeedQNs = Conversion + StickSpectra + CrossSections
     if NeedQNs != 0:
@@ -641,6 +669,14 @@ def inp_para(inp_filepath):
             N_point = int(np.abs(max_wnl - min_wnl)/bin_size+1)
         else:
             raise ValueError("Please type the correct grid choice 'Npoints' or 'BinSize' into the input file.")
+        # Compress cross section output files (optional keyword; disabled unless requested)
+        compress_xsec_rows = inp_df[col0.isin(['CompressXsec(Y/N)'])]
+        if not compress_xsec_rows.empty:
+            CompressXsecYN = str(compress_xsec_rows[1].iloc[0]).strip().upper()[0]
+            if CompressXsecYN not in ('Y', 'N'):
+                raise ValueError("Please type the correct choice 'Y' or 'N' for CompressXsec(Y/N) into the input file.")
+        else:
+            CompressXsecYN = 'N'
         # Predissociative cross sections
         predissocYN = inp_df[col0.isin(['PredissocXsec(Y/N)'])][1].values[0].upper()[0]
         if predissocYN != 'Y' and predissocYN != 'N':
@@ -747,9 +783,10 @@ def inp_para(inp_filepath):
     else:
         bin_size = 'None'
         N_point = 'None'
+        CompressXsecYN = 'N'
         predissocYN = 'N'
         photo = ''
-        cutoff = 'None'   
+        cutoff = 'None'
         DopplerHWHMYN = 'None'
         LorentzianHWHMYN = 'None'      
         alpha_HWHM = 'None'        
@@ -983,4 +1020,5 @@ def inp_para(inp_filepath):
             check_uncertainty, check_lifetime, check_gfactor, check_predissoc, 
             PlotOscillatorStrengthYN, PlotOscillatorStrengthMethod, PlotOscillatorStrengthWnWl, PlotOscillatorStrengthUnit, limitYaxisOS,
             PlotStickSpectraYN, PlotStickSpectraMethod, PlotStickSpectraWnWl, PlotStickSpectraUnit, limitYaxisStickSpectra, 
-            Tvib_list, Trot_list, vib_label, rot_label, PlotCrossSectionYN, PlotCrossSectionMethod, PlotCrossSectionWnWl, PlotCrossSectionUnit, limitYaxisXsec)
+            Tvib_list, Trot_list, vib_label, rot_label, PlotCrossSectionYN, PlotCrossSectionMethod, PlotCrossSectionWnWl, PlotCrossSectionUnit, limitYaxisXsec,
+            cache, cache_dir, max_memory, refresh_cache, CompressXsecYN)
