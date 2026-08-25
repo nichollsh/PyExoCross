@@ -83,7 +83,7 @@ Y-axisLimitStickSpectra                 1e-32                     # Default valu
 
 # Calculate cross sections #
 Pressures                               1e1
-Npoints/BinSize                         BinSize   0.02
+Npoints/BinSize                         BinSize   0.025
 Broadeners                              Default
 Ratios                                  1.0
 Profile                                 SciPyVoigt

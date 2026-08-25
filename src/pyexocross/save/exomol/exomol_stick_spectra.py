@@ -22,6 +22,7 @@ from pyexocross.base.large_file import (
     is_large_trans_file,
     read_trans_chunks,
     process_large_chunks,
+    cache_small_file_chunks,
     sourcename,
 )
 from pyexocross.base.constants import MAX_LARGE_FILE_WORKERS
@@ -211,7 +212,7 @@ def process_exomol_stick_spectra_chunk(states_part_df,T_list,Tvib_list,Trot_list
     stick_spectra_df = stick_spectra_df[col_stick_spectra]  
     return stick_spectra_df
 
-def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr,trans_filepath,temp_idx=None):
+def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr,trans_filepath,temp_idx=None,cached_chunks=None):
     """
     Process a single transition file to calculate stick spectra.
 
@@ -234,24 +235,22 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
         Path to the transition file to process
     temp_idx : int, optional
         Temperature index to process single temperature
+    cached_chunks : list of pd.DataFrame, optional
+        Pre-parsed transition chunks to reuse instead of re-reading trans_filepath
+        (built once per file by save_exomol_stick_spectra for files below the
+        large-file threshold and reused across every temperature).
 
     Returns
     -------
     pd.DataFrame
         Combined stick spectra DataFrame from all chunks
-    """   
+    """
     from pyexocross.core import ncputrans
     trans_filename = sourcename(trans_filepath)
     print('\nProcessing transitions file:', trans_filename)
     use_cols = [0,1,2]
     use_names = ['uid','lid','A']
-    large_file = is_large_trans_file(trans_filepath)
-    trans_reader = read_trans_chunks(
-        trans_filepath,
-        use_cols,
-        use_names,
-        extracols=stickcachecolumns(),
-    )
+    large_file = cached_chunks is None and is_large_trans_file(trans_filepath)
     desc = 'Processing ' + trans_filename + (' (limited streaming)' if large_file else '')
     zero_factory = lambda: pd.DataFrame(columns=['v','S',"J'","E'",'J"','E"'])
     def combine_fn(results):
@@ -265,6 +264,12 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
     handler = partial(process_exomol_stick_spectra_chunk, states_part_df, T_list, Tvib_list, Trot_list, Q_arr, temp_idx=temp_idx)
     if large_file:
         print('Large transition file detected (>1 GB). Using bounded parallel streaming to reduce memory usage.')
+        trans_reader = read_trans_chunks(
+            trans_filepath,
+            use_cols,
+            use_names,
+            extracols=stickcachecolumns(),
+        )
         stick_spectra_df = process_large_chunks(
             trans_reader,
             handler,
@@ -274,7 +279,15 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
             max_workers=max(1, min(ncputrans, MAX_LARGE_FILE_WORKERS))
         )
     else:
-        trans_chunks = list(trans_reader)
+        if cached_chunks is not None:
+            trans_chunks = cached_chunks
+        else:
+            trans_chunks = list(read_trans_chunks(
+                trans_filepath,
+                use_cols,
+                use_names,
+                extracols=stickcachecolumns(),
+            ))
         if len(trans_chunks) == 0:
             stick_spectra_df = zero_factory()
         else:
@@ -367,13 +380,19 @@ def save_exomol_stick_spectra(
         except:
             pass
     
-    print('\nReading transitions and calculating stick spectra ...')    
+    print('\nReading transitions and calculating stick spectra ...')
     trans_filepaths = (
         trans_sources
         if trans_sources is not None
         else get_part_transfiles(read_path, data_info, min_wn, max_wn)
     )
-    
+
+    # Cache parsed chunks once per file (below the large-file threshold) so they are
+    # reused across every temperature instead of being re-read from disk each time.
+    trans_chunks_cache = cache_small_file_chunks(
+        trans_filepaths, [0,1,2], ['uid','lid','A'], extracols=stickcachecolumns()
+    )
+
     # Process each temperature separately to save memory
     QNsfmf = (str(QNs_format).replace("'","").replace(",","").replace("[","").replace("]","")
                 .replace('d','s').replace('i','s').replace('.1f','s'))
@@ -398,7 +417,7 @@ def save_exomol_stick_spectra(
         with ThreadPoolExecutor(max_workers=ncpufiles) as executor:
             # Submit reading tasks for each file
             futures = [executor.submit(process_exomol_stick_spectra,states_part_df_ss,T_list,Tvib_list,Trot_list,Q_arr,
-                                       trans_filepath,temp_idx) for trans_filepath in trans_filepaths]
+                                       trans_filepath,temp_idx,trans_chunks_cache.get(trans_filepath)) for trans_filepath in trans_filepaths]
             result_frames = [
                 df for df in (future.result() for future in futures)
                 if df is not None and not df.empty and not df.dropna(how='all').empty

@@ -172,6 +172,41 @@ def read_trans_chunks(trans_filepath, usecols, names, chunk_sz=None, extracols=N
         read_kwargs['compression'] = 'bz2'
     return pd.read_csv(path, **read_kwargs)
 
+def cache_small_file_chunks(trans_filepaths, use_cols, use_names, extracols=None):
+    """
+    Materialize and cache parsed chunks once for every file below the large-file cutoff.
+
+    Reads each non-large transition file exactly once via read_trans_chunks and stores
+    the resulting chunk DataFrames, so callers can reuse the same parsed data across a
+    whole temperature/pressure grid instead of re-reading the file per grid point. Large
+    files (>= LARGE_TRANS_FILE_BYTES) are intentionally left out of the returned dict so
+    callers keep streaming them lazily and memory usage stays bounded.
+
+    Parameters
+    ----------
+    trans_filepaths : iterable
+        Transition file paths or TransSource objects to consider caching.
+    use_cols : list of int
+        Column indices to read, passed through to read_trans_chunks.
+    use_names : list of str
+        Column names to assign, passed through to read_trans_chunks.
+    extracols : list of str, optional
+        Extra state-derived columns to project from a Parquet transition cache.
+
+    Returns
+    -------
+    dict
+        Mapping from trans_filepath to a list of already-parsed chunk DataFrames,
+        containing only entries for files below the large-file size cutoff.
+    """
+    cache = {}
+    for trans_filepath in trans_filepaths:
+        if not is_large_trans_file(trans_filepath):
+            cache[trans_filepath] = list(
+                read_trans_chunks(trans_filepath, use_cols, use_names, extracols=extracols)
+            )
+    return cache
+
 def process_large_chunks(trans_reader, handler, combine_fn, zero_factory, desc,
                          max_workers=MAX_LARGE_FILE_WORKERS, max_inflight=None, reducer=None,
                          executor_class=ProcessPoolExecutor):

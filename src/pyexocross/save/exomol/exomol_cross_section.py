@@ -21,6 +21,7 @@ from pyexocross.base.log import (
 from pyexocross.base.large_file import (
     is_large_trans_file,
     read_trans_chunks,
+    cache_small_file_chunks,
     sourcename,
 )
 from pyexocross.database import read_broad, get_part_transfiles
@@ -440,7 +441,19 @@ def process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list
         xsec = np.zeros_like(wn_grid)
     return xsec
 
-def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,broad,ratio,nbroad,broad_dfs,profile_label,trans_filepath,temp_idx=None):
+def exomol_cross_section_usecols(DopplerHWHMYN, LorentzianHWHMYN, alpha_hwhm_colid, gamma_hwhm_colid):
+    """Return the (use_cols, use_names) column selection for reading a cross-section transitions file."""
+    if DopplerHWHMYN == 'U' and LorentzianHWHMYN == 'U':
+        return [0,1,2,alpha_hwhm_colid, gamma_hwhm_colid], ['uid','lid','A','alpha_hwhm', 'gamma_hwhm']
+    elif DopplerHWHMYN == 'U' and LorentzianHWHMYN != 'U':
+        return [0,1,2,alpha_hwhm_colid], ['uid','lid','A','alpha_hwhm']
+    elif DopplerHWHMYN != 'U' and LorentzianHWHMYN == 'U':
+        return [0,1,2,gamma_hwhm_colid], ['uid','lid','A','gamma_hwhm']
+    else:
+        return [0,1,2], ['uid','lid','A']
+
+
+def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,broad,ratio,nbroad,broad_dfs,profile_label,trans_filepath,temp_idx=None,cached_chunks=None):
     """
     Process a single transition file to calculate cross sections.
 
@@ -475,12 +488,16 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
         Path to the transition file to process
     temp_idx : int, optional
         Temperature index to process single temperature
+    cached_chunks : list of pd.DataFrame, optional
+        Pre-parsed transition chunks to reuse instead of re-reading trans_filepath
+        (built once per file by save_exomol_cross_section for files below the
+        large-file threshold and reused across every (T, P) grid point).
 
     Returns
     -------
     np.ndarray
         Combined cross-section array from all chunks, shape (n_points,)
-    """ 
+    """
     from pyexocross.core import (
         DopplerHWHMYN,
         LorentzianHWHMYN,
@@ -491,28 +508,19 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
     )
     trans_filename = sourcename(trans_filepath)
     print('\nProcessing transitions file:', trans_filename)
-    if DopplerHWHMYN == 'U' and LorentzianHWHMYN == 'U':
-        use_cols = [0,1,2,alpha_hwhm_colid, gamma_hwhm_colid]
-        use_names = ['uid','lid','A','alpha_hwhm', 'gamma_hwhm']
-    elif DopplerHWHMYN == 'U' and LorentzianHWHMYN != 'U':
-        use_cols = [0,1,2,alpha_hwhm_colid]
-        use_names = ['uid','lid','A','alpha_hwhm']
-    elif DopplerHWHMYN != 'U' and LorentzianHWHMYN == 'U':
-        use_cols = [0,1,2,gamma_hwhm_colid]
-        use_names = ['uid','lid','A','gamma_hwhm']
-    else:
-        use_cols = [0,1,2]
-        use_names = ['uid','lid','A']
-    large_file = is_large_trans_file(trans_filepath)
-    trans_reader = read_trans_chunks(
-        trans_filepath,
-        use_cols,
-        use_names,
-        extracols=crosscachecolumns(broad_dfs),
+    use_cols, use_names = exomol_cross_section_usecols(
+        DopplerHWHMYN, LorentzianHWHMYN, alpha_hwhm_colid, gamma_hwhm_colid
     )
+    large_file = cached_chunks is None and is_large_trans_file(trans_filepath)
     desc = 'Processing ' + trans_filename + (' (streaming)' if large_file else '')
     if large_file:
         print('Large transition file detected (>1 GB). Streaming chunks sequentially to reduce memory usage.')
+        trans_reader = read_trans_chunks(
+            trans_filepath,
+            use_cols,
+            use_names,
+            extracols=crosscachecolumns(broad_dfs),
+        )
         xsecs = None
         for trans_df_chunk in log_tqdm(trans_reader, desc=desc):
             chunk_xsec = process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,
@@ -521,7 +529,15 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
         if xsecs is None:
             xsecs = np.zeros_like(wn_grid)
     else:
-        trans_chunks = list(trans_reader)
+        if cached_chunks is not None:
+            trans_chunks = cached_chunks
+        else:
+            trans_chunks = list(read_trans_chunks(
+                trans_filepath,
+                use_cols,
+                use_names,
+                extracols=crosscachecolumns(broad_dfs),
+            ))
         if len(trans_chunks) == 0:
             xsecs = np.zeros_like(wn_grid)
         else:
@@ -588,6 +604,10 @@ def save_exomol_cross_section(
         database,
         ncpufiles,
         wn_wl,
+        DopplerHWHMYN,
+        LorentzianHWHMYN,
+        alpha_hwhm_colid,
+        gamma_hwhm_colid,
     )
     print('\nCalculate cross sections.')
     tot = Timer()
@@ -621,13 +641,22 @@ def save_exomol_cross_section(
     print_xsec_info(profile_label, cutoff, UncFilter, min_wnl, max_wnl, 
                     'cm⁻¹', 'cm⁻¹/(molecule cm⁻²)', broad, ratio)
     
-    print('Reading transitions and calculating cross sections ...')    
+    print('Reading transitions and calculating cross sections ...')
     trans_filepaths = (
         trans_sources
         if trans_sources is not None
         else get_part_transfiles(read_path, data_info, min_wn, max_wn)
     )
-    
+
+    # Cache parsed chunks once per file (below the large-file threshold) so they are
+    # reused across every (T, P) grid point instead of being re-read from disk each time.
+    use_cols, use_names = exomol_cross_section_usecols(
+        DopplerHWHMYN, LorentzianHWHMYN, alpha_hwhm_colid, gamma_hwhm_colid
+    )
+    trans_chunks_cache = cache_small_file_chunks(
+        trans_filepaths, use_cols, use_names, extracols=crosscachecolumns(broad_dfs)
+    )
+
     # Process each (T, P) combination separately to save memory
     any_results = False
     xsec_file_count = 0
@@ -644,9 +673,9 @@ def save_exomol_cross_section(
                 with ThreadPoolExecutor(max_workers=ncpufiles) as executor:
                     # Submit reading tasks for each file
                     futures = [executor.submit(process_exomol_cross_section,states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,broad,ratio,nbroad,broad_dfs,
-                                               profile_label,trans_filepath,temp_idx) for trans_filepath in trans_filepaths]
+                                               profile_label,trans_filepath,temp_idx,trans_chunks_cache.get(trans_filepath)) for trans_filepath in trans_filepaths]
                     xsec = sum([future.result() for future in futures])
-                    
+
                 if len(xsec) == 0 or np.all(xsec == 0):
                     print(f'Warning: No cross sections found for T={T} K, P={P} bar. Skipping this combination.')
                     continue
@@ -671,7 +700,7 @@ def save_exomol_cross_section(
             with ThreadPoolExecutor(max_workers=ncpufiles) as executor:
                 # Submit reading tasks for each file
                 futures = [executor.submit(process_exomol_cross_section,states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,broad,ratio,nbroad,broad_dfs,
-                                           profile_label,trans_filepath,temp_idx) for trans_filepath in trans_filepaths]
+                                           profile_label,trans_filepath,temp_idx,trans_chunks_cache.get(trans_filepath)) for trans_filepath in trans_filepaths]
                 xsec = sum([future.result() for future in futures])
                 
             if len(xsec) == 0 or np.all(xsec == 0):
