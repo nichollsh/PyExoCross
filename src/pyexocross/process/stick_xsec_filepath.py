@@ -34,10 +34,10 @@ def temperature_pressure_string(T, P, temp_idx, NLTEMethod,
 
     # Optional pressure part (single value, no range)
     if pressure_dependent and P is not None:
-        if P < 0.001 or P >= 1000:
-            P_str = f'__P{P:.2e}bar'
-        else:
-            P_str = f'__P{P}bar'
+        # if P < 0.001 or P >= 1000:
+        P_str = f'__P{P:.2e}bar'
+        # else:
+        #     P_str = f'__P{P}bar'
         T_str = T_str + P_str
 
     return T_str
