@@ -28,14 +28,17 @@ from pyexocross.base.log import (
 from pyexocross.base.input import parse_args
 
 if __name__ == '__main__':
-    # get input file path from command line
-    inp_path = parse_args()
+    # get input file path and resume flag from command line
+    args = parse_args()
+    inp_path = args.path
 
     # load config from input file
     cfg = Config(inp_filepath=inp_path, force_reload=True)
+    cfg.resume = args.resume
 
-    # clear output folder
-    cfg.clear_output_folder()
+    # NOTE: the output folder is cleared inside get_results() (core.py), gated on
+    # cfg.resume, rather than here -- this used to be a second, unconditional call
+    # site duplicating that one.
 
     # setup logging
     verbose = parse_verbose_info(inp_path)

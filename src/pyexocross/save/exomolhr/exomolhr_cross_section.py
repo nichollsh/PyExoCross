@@ -173,7 +173,7 @@ def process_exomolhr_cross_section_chunk(exomolhr_df, T, P, Q, profile_label,
         return cross_section_BinnedVoigt(wn_grid, v, sigma, gamma, coef, cutoff)
     raise ValueError('Please choose line profile from the list.')
 
-def save_exomolhr_cross_section(exomolhr_df, T_list, P_list, Tvib_list, Trot_list):
+def save_exomolhr_cross_section(exomolhr_df, T_list, P_list, Tvib_list, Trot_list, resume=False):
     """
     Calculate and save cross sections for ExoMolHR line lists.
     """
@@ -190,6 +190,19 @@ def save_exomolhr_cross_section(exomolhr_df, T_list, P_list, Tvib_list, Trot_lis
         database,
         wn_wl,
         ncputrans,
+        wn_wl_unit,
+        threshold,
+        data_info,
+        save_path,
+        bin_size,
+        LTE_NLTE,
+        photo,
+        CompressXsecYN,
+    )
+    from pyexocross.process.stick_xsec_filepath import (
+        compute_resume_skip_set,
+        cross_section_wn_range_strings,
+        xsecs_files_foldername,
     )
 
     print('\nCalculate cross sections.')
@@ -227,26 +240,47 @@ def save_exomolhr_cross_section(exomolhr_df, T_list, P_list, Tvib_list, Trot_lis
         T, Tvib, Trot = get_temp_vals(temp_idx, NLTEMethod, T_list, Tvib_list, Trot_list)
         pressures = P_per_temp[temp_idx] if pressure_dependent else [P_per_temp[temp_idx][0]]
         Q = Q_arr[temp_idx]
-        for P in pressures:
-            xsec_tasks.append((temp_idx, T, Q, P, Tvib, Trot))
-            
+        for press_idx, P in enumerate(pressures):
+            xsec_tasks.append((temp_idx, press_idx, T, Q, P, Tvib, Trot))
+
+    resume_skip_set = set()
+    if resume:
+        str_min_v, str_max_v, unit_fn = cross_section_wn_range_strings(wn_grid, wn_wl, wn_wl_unit)
+        xsecs_foldername_resume = xsecs_files_foldername(save_path, data_info, database)
+        target_combos = [
+            ((temp_idx, press_idx), T, P, temp_idx)
+            for temp_idx, press_idx, T, Q, P, Tvib, Trot in xsec_tasks
+        ]
+        resume_skip_set = compute_resume_skip_set(
+            target_combos, xsecs_foldername_resume, data_info, Tvib_list, Trot_list,
+            str_min_v, str_max_v, unit_fn, wn_wl, UncFilter, threshold,
+            database, abs_emi, bin_size, cutoff, profile_label, LTE_NLTE,
+            photo, NLTEMethod, pressure_dependent, CompressXsecYN,
+        )
+        if resume_skip_set:
+            print(f'Resume: {len(resume_skip_set)} of {len(xsec_tasks)} (T, P) cross-section '
+                  f'point(s) already have an output file and will be skipped '
+                  f'(the 2 most recently modified, if present, are always redone).')
+
     any_results = False
     xsec_file_count = 0
-    total_tp_points = len(xsec_tasks)
+    total_tp_points = len(xsec_tasks) - len(resume_skip_set)
     tp_point_idx = 0
     print('Processing cross sections in parallel...')
-    
+
     with _executor_context(max_workers=ncputrans) as executor:
         if NLTEMethod in ('L', 'P'):
             futures_xsec = {executor.submit(process_exomolhr_cross_section_chunk,
                                            exomolhr_df, T, P, Q, profile_label,
                                            None, None, None, None, None, None): (temp_idx, P)
-                           for temp_idx, T, Q, P, Tvib, Trot in log_tqdm(xsec_tasks, desc='\nProcessing cross sections')}
+                           for temp_idx, press_idx, T, Q, P, Tvib, Trot in log_tqdm(xsec_tasks, desc='\nProcessing cross sections')
+                           if (temp_idx, press_idx) not in resume_skip_set}
         else:
             futures_xsec = {executor.submit(process_exomolhr_cross_section_chunk,
                                            exomolhr_df, T, P, Q, profile_label,
                                            Tvib, Trot, Evibp, Erotp, Evibpp, Erotpp): (temp_idx, P)
-                           for temp_idx, T, Q, P, Tvib, Trot in log_tqdm(xsec_tasks, desc='\nProcessing cross sections')}
+                           for temp_idx, press_idx, T, Q, P, Tvib, Trot in log_tqdm(xsec_tasks, desc='\nProcessing cross sections')
+                           if (temp_idx, press_idx) not in resume_skip_set}
 
         for future in as_completed(futures_xsec):
             temp_idx, P = futures_xsec[future]

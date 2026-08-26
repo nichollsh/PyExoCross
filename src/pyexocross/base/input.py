@@ -134,18 +134,27 @@ def _hitran_molparam_filepath():
 # The input file path
 def parse_args():
     """
-    Parse command-line arguments to get the input file path.
+    Parse command-line arguments.
 
     Returns
     -------
-    str
-        Path to the input configuration file.
+    argparse.Namespace
+        Parsed arguments. Use `.path` for the .inp file path and `.resume`
+        for the resume flag.
     """
     parse = argparse.ArgumentParser(description='PyExoCross Program')
     parse.add_argument('-p', '--path', type=str, metavar='', required=True, help='Input file path')
-    args = parse.parse_args()
-    inp_filepath = args.path
-    return inp_filepath
+    parse.add_argument(
+        '-r', '--resume',
+        action='store_true',
+        default=False,
+        help=(
+            'Resume an interrupted run: skip (T, P) cross-section grid points whose .xsec '
+            'output already exists, except the 2 most recently modified (always redone, in '
+            'case they were half-written). Default: off (recompute everything, as today).'
+        ),
+    )
+    return parse.parse_args()
 
 # Process temperature and pressure values.
 def parse_TP_values(value_str):

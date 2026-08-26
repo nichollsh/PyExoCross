@@ -186,7 +186,7 @@ def process_hitran_cross_section_chunk(hitran_linelist_df, T, P, Q, profile_labe
     return xsec
 
 # Cross sections for HITRAN database
-def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Trot_list):
+def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Trot_list, resume=False):
     """
     Main function to calculate and save cross sections for HITRAN database.
 
@@ -216,6 +216,19 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
         wn_grid,
         ncputrans,
         wn_wl,
+        wn_wl_unit,
+        threshold,
+        data_info,
+        save_path,
+        bin_size,
+        LTE_NLTE,
+        photo,
+        CompressXsecYN,
+    )
+    from pyexocross.process.stick_xsec_filepath import (
+        compute_resume_skip_set,
+        cross_section_wn_range_strings,
+        xsecs_files_foldername,
     )
 
     print('\nCalculate cross sections.')  
@@ -264,16 +277,36 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
         for temp_idx in range(n_temps)
     ]
     temp_info_map = {temp_idx: (T, Tvib, Trot, Q) for temp_idx, T, Tvib, Trot, Q in temp_info}
-    
+
+    resume_skip_set = set()
+    if resume:
+        str_min_v, str_max_v, unit_fn = cross_section_wn_range_strings(wn_grid, wn_wl, wn_wl_unit)
+        xsecs_foldername_resume = xsecs_files_foldername(save_path, data_info, database)
+        target_combos = [
+            ((temp_idx, press_idx), T, P, temp_idx)
+            for temp_idx, T, Tvib, Trot, Q in temp_info
+            for press_idx, P in enumerate(
+                P_per_temp[temp_idx] if pressure_dependent else [P_per_temp[temp_idx][0]]
+            )
+        ]
+        resume_skip_set = compute_resume_skip_set(
+            target_combos, xsecs_foldername_resume, data_info, Tvib_list, Trot_list,
+            str_min_v, str_max_v, unit_fn, wn_wl, UncFilter, threshold,
+            database, abs_emi, bin_size, cutoff, profile_label, LTE_NLTE,
+            photo, NLTEMethod, pressure_dependent, CompressXsecYN,
+        )
+        if resume_skip_set:
+            print(f'Resume: {len(resume_skip_set)} of {len(target_combos)} TP cross-section points will be skipped')
+
     if pressure_dependent:
         # For pressure-dependent profiles: process each (T, P) combination
         # This gives num_T * num_P files (for each T, save num_P files)
         tp_combinations = [
-            (temp_idx, T, P, Q, Tvib, Trot)
+            (temp_idx, press_idx, T, P, Q, Tvib, Trot)
             for temp_idx, T, Tvib, Trot, Q in temp_info
-            for P in P_per_temp[temp_idx]
+            for press_idx, P in enumerate(P_per_temp[temp_idx])
         ]
-        total_tp_points = len(tp_combinations)
+        total_tp_points = len(tp_combinations) - len(resume_skip_set)
         tp_point_idx = 0
 
         # Process all (T, P) combinations in parallel
@@ -284,7 +317,8 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
                         process_hitran_cross_section_chunk,
                         hitran_linelist_df, T, P, Q, profile_label
                     ): (temp_idx, T, P)
-                    for temp_idx, T, P, Q, Tvib, Trot in log_tqdm(tp_combinations, desc='\nProcessing cross sections')
+                    for temp_idx, press_idx, T, P, Q, Tvib, Trot in log_tqdm(tp_combinations, desc='\nProcessing cross sections')
+                    if (temp_idx, press_idx) not in resume_skip_set
                 }
             elif NLTEMethod in ('T', 'D'):
                 futures = {
@@ -293,7 +327,8 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
                         hitran_linelist_df, T, P, Q, profile_label,
                         Tvib, Trot, Evibp, Erotp, Evibpp, Erotpp
                     ): (temp_idx, T, P)
-                    for temp_idx, T, P, Q, Tvib, Trot in log_tqdm(tp_combinations, desc='\nProcessing cross sections')
+                    for temp_idx, press_idx, T, P, Q, Tvib, Trot in log_tqdm(tp_combinations, desc='\nProcessing cross sections')
+                    if (temp_idx, press_idx) not in resume_skip_set
                 }
             else:
                 raise ValueError("Please choose: 'LTE' or 'Non-LTE' (T, D or P) method.")
@@ -330,7 +365,7 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
                 (temp_idx, T, Q, P_per_temp[temp_idx][0], Tvib, Trot)
                 for temp_idx, T, Tvib, Trot, Q in temp_info
             ]
-            total_tp_points = len(xsec_tasks)
+            total_tp_points = len(xsec_tasks) - len(resume_skip_set)
             tp_point_idx = 0
             if NLTEMethod in ('L', 'P'):
                 futures = {
@@ -339,6 +374,7 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
                         hitran_linelist_df, T, P, Q, profile_label
                     ): temp_idx
                     for temp_idx, T, Q, P, Tvib, Trot in log_tqdm(xsec_tasks, desc='\nProcessing cross sections')
+                    if (temp_idx, 0) not in resume_skip_set
                 }
             else:
                 futures = {
@@ -348,6 +384,7 @@ def save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Tro
                         Tvib, Trot, Evibp, Erotp, Evibpp, Erotpp
                     ): temp_idx
                     for temp_idx, T, Q, P, Tvib, Trot in log_tqdm(xsec_tasks, desc='\nProcessing cross sections')
+                    if (temp_idx, 0) not in resume_skip_set
                 }
 
             for future in as_completed(futures):

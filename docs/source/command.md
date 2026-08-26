@@ -58,6 +58,31 @@ LogFilePath                             None
 This is independent of terminal output. Use `Verbose False` to hide normal
 terminal output and progress bars.
 
+## Resuming an interrupted run
+
+If a cross-section run is interrupted (killed, timed out), it can be resumed with `-r` /
+`--resume`. This skips (T, P) cross-section grid points whose `.xsec` output file already
+exists in the output folder, except the 2 most recently modified existing files, which are
+always redone (they may have been half-written when the previous run was interrupted). With
+`-r` / `--resume` omitted (default), behaviour is unchanged: the output folder is cleared and
+everything is recomputed.
+
+```bash
+python run.py -p ./input/H2O_exomol.inp -r
+# OR
+python run.py -p ./input/H2O_exomol.inp --resume
+```
+
+The `pyexocross` console-script entry point supports the same flag:
+
+```bash
+pyexocross -p ./input/H2O_exomol.inp --resume
+```
+
+`resume` has no `.inp` keyword equivalent -- it is CLI-only, or settable as a Python-API kwarg
+(`resume=True`) for `px.cross_sections()`-style calls. See
+[inp_mapping.md](python_api/inp_mapping.md) for details.
+
 ## Notes for input file
 
 All information can be written in the input file. Just change the information you will use.You don't need to change any other unnecessary information.Please do not change the first column strings.

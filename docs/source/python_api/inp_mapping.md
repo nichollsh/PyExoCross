@@ -101,6 +101,10 @@ GPUBatchLines                           8192
 GPUBatchGrid                            256
 ```
 
+## Resuming an Interrupted Run (Python API / CLI only)
+
+The `resume` flag is a Python-API kwarg (`resume=True`, default `False`) and CLI-only flag (`-r` / `--resume` for both `python run.py` and the `pyexocross` console script). This option skips (T, P) cross-section grid points whose output `.xsec` file already exists, except the 2 most recently modified existing files. 
+
 ## Parquet Transition Cache
 
 All four of these keywords are optional.

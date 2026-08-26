@@ -135,8 +135,9 @@ def get_results(config, data=None):
     read_path = config.read_path
     save_path = config.save_path
 
-    # Delete folder for this calculation
-    config.clear_output_folder()
+    # Delete folder for this calculation, unless resuming an interrupted run
+    if not config.resume:
+        config.clear_output_folder()
         
     print("")
 
@@ -407,6 +408,7 @@ def get_results(config, data=None):
                     P_list,
                     Q_arr,
                     trans_sources=trans_sources,
+                    resume=config.resume,
                 )
     
     elif database == 'ExoMolHR':
@@ -487,6 +489,7 @@ def get_results(config, data=None):
                     P_list,
                     Tvib_list,
                     Trot_list,
+                    resume=config.resume,
                 )
 
     elif database == 'HITRAN' or database == 'HITEMP':
@@ -598,7 +601,7 @@ def get_results(config, data=None):
         elif StickSpectra == 1:
             save_hitran_stick_spectra(hitran_linelist_df, QNs_col, T_list, Tvib_list, Trot_list)
         elif CrossSections == 1:
-            save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Trot_list)
+            save_hitran_cross_section(hitran_linelist_df, T_list, P_list, Tvib_list, Trot_list, resume=config.resume)
     else:
         raise ValueError("Please add the name of the database 'ExoMol', 'ExoMolHR', 'ExoAtom', 'HITRAN', or 'HITEMP' into the input file.")
     

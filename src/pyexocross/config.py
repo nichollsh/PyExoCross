@@ -34,10 +34,19 @@ class Config:
             If True, bypass cached parsed .inp parameters and re-parse the file.
             This is useful when the same .inp file is edited within a long-lived
             Python session (e.g., Jupyter). Default is False.
+        resume : bool, optional
+            If True, resume an interrupted cross-section run: skip (T, P) grid points
+            whose .xsec output already exists, except the 2 most recently modified
+            (always redone, since they may have been half-written). Has no .inp
+            keyword equivalent; set via this kwarg, or via `-r`/`--resume` on the
+            command line. Default is False (existing behavior: clear and recompute
+            everything).
         **kwargs
             Direct parameter values. Used when inp_filepath is None or to override file values.
         """
         self.inp_filepath = inp_filepath
+        # `resume` has no .inp keyword (CLI-only / Python-API-kwarg-only flag).
+        self.resume = False
         if inp_filepath is not None:
             self._load_from_file(inp_filepath, force_reload=force_reload)
             self.output = 'files'
@@ -103,6 +112,9 @@ class Config:
         self.logs_path = kwargs.get('logs_path', getattr(self, 'logs_path', './pyexocross.log'))
         self.verbose = normalize_verbose(
             kwargs.get('verbose', getattr(self, 'verbose', True))
+        )
+        self.resume = normalize_verbose(
+            kwargs.get('resume', getattr(self, 'resume', False))
         )
         self.output = str(kwargs.get('output', getattr(self, 'output', 'files'))).lower()
         if self.output not in ('files', 'memory', 'both'):
@@ -673,6 +685,7 @@ class Config:
             'save_path': 'save_path',
             'logs_path': 'logs_path',
             'inp_filepath': 'inp_filepath',
+            'resume': 'resume',
             'conversion': 'Conversion',
             'partition_functions': 'PartitionFunctions',
             'specific_heats': 'SpecificHeats',

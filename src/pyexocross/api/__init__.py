@@ -883,6 +883,12 @@ def cross_sections(inp_filepath=None, **kwargs):
         verbose : bool, optional
             Show normal terminal output. With ``False`` and file logging
             enabled, normal output is written only to the log. Default is True.
+        resume : bool, optional
+            Resume an interrupted run: skip (T, P) grid points whose ``.xsec``
+            output already exists, except the 2 most recently modified
+            (always redone, since they may have been half-written). Has no
+            ``.inp`` keyword equivalent; also settable via ``-r``/``--resume``
+            on the command line. Default is ``False``.
 
         Notes
         -----

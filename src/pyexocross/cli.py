@@ -38,7 +38,15 @@ Examples:
         required=True,
         help='Path to .inp configuration file'
     )
-    
+    parser.add_argument(
+        '-r', '--resume',
+        action='store_true',
+        default=False,
+        help=(
+            'Resume an interrupted run; skip existing T-P grid points.'
+        ),
+    )
+
     args = parser.parse_args()
     try:
         mp.set_start_method('fork')
@@ -54,6 +62,7 @@ Examples:
             setup_logging(logpath, announce=verbose)
         with output_context(verbose):
             config = Config(inp_filepath=args.path)
+            config.resume = args.resume
             get_results(config)
             print('Done!')
     except Exception as e:

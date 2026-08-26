@@ -20,7 +20,7 @@ from pyexocross.base.log import (
 )
 from pyexocross.base.large_file import (
     is_large_trans_file,
-    LARGE_TRANS_FILE_BYTES
+    LARGE_TRANS_FILE_BYTES,
     read_trans_chunks,
     cache_small_file_chunks,
     sourcename,
@@ -567,6 +567,7 @@ def save_exomol_cross_section(
     P_list,
     Q_arr,
     trans_sources=None,
+    resume=False,
 ):
     """
     Main function to calculate and save cross sections for ExoMol database.
@@ -596,6 +597,7 @@ def save_exomol_cross_section(
         abs_emi,
         cutoff,
         UncFilter,
+        threshold,
         min_wnl,
         max_wnl,
         min_wn,
@@ -605,10 +607,21 @@ def save_exomol_cross_section(
         database,
         ncpufiles,
         wn_wl,
+        wn_wl_unit,
+        save_path,
+        bin_size,
+        LTE_NLTE,
+        photo,
+        CompressXsecYN,
         DopplerHWHMYN,
         LorentzianHWHMYN,
         alpha_hwhm_colid,
         gamma_hwhm_colid,
+    )
+    from pyexocross.process.stick_xsec_filepath import (
+        compute_resume_skip_set,
+        cross_section_wn_range_strings,
+        xsecs_files_foldername,
     )
     print('\nCalculate cross sections.')
     tot = Timer()
@@ -663,6 +676,29 @@ def save_exomol_cross_section(
     xsec_file_count = 0
     total_tp_points = sum(len(P_per_temp[temp_idx]) if pressure_dependent else 1 for temp_idx in range(ntemp))
     tp_point_idx = 0
+
+    resume_skip_set = set()
+    if resume:
+        str_min_v, str_max_v, unit_fn = cross_section_wn_range_strings(wn_grid, wn_wl, wn_wl_unit)
+        xsecs_foldername_resume = xsecs_files_foldername(save_path, data_info, database)
+        target_combos = []
+        for temp_idx_ in range(ntemp):
+            T_, Tvib_, Trot_ = get_temp_vals(temp_idx_, NLTEMethod, T_list, Tvib_list, Trot_list)
+            press_list = P_per_temp[temp_idx_] if pressure_dependent else [P_per_temp[temp_idx_][0]]
+            for press_idx_, P_ in enumerate(press_list):
+                target_combos.append(((temp_idx_, press_idx_), T_, P_, temp_idx_))
+        resume_skip_set = compute_resume_skip_set(
+            target_combos, xsecs_foldername_resume, data_info, Tvib_list, Trot_list,
+            str_min_v, str_max_v, unit_fn, wn_wl, UncFilter, threshold,
+            database, abs_emi, bin_size, cutoff, profile_label, LTE_NLTE,
+            photo, NLTEMethod, pressure_dependent, CompressXsecYN,
+        )
+        if resume_skip_set:
+            total_tp_points = max(total_tp_points - len(resume_skip_set), 0)
+            print(f'Resume: {len(resume_skip_set)} of {len(target_combos)} (T, P) cross-section '
+                  f'point(s) already have an output file and will be skipped '
+                  f'(the 2 most recently modified, if present, are always redone).')
+
     for temp_idx in log_tqdm(range(ntemp), desc='\nProcessing cross sections'):
         T, Tvib, Trot = get_temp_vals(temp_idx, NLTEMethod, T_list, Tvib_list, Trot_list)
         
@@ -670,6 +706,10 @@ def save_exomol_cross_section(
             # For pressure-dependent profiles: process each pressure for this temperature
             # This gives num_T * num_P files (for each T, save num_P files)
             for press_idx, P in enumerate(P_per_temp[temp_idx]):
+                if (temp_idx, press_idx) in resume_skip_set:
+                    print(f'Skipping T={T} K, P={P} bar: output file already exists (resume).')
+                    continue
+
                 # Process multiple files in parallel for this (T, P) combination
                 with ThreadPoolExecutor(max_workers=ncpufiles) as executor:
                     # Submit reading tasks for each file
@@ -696,7 +736,11 @@ def save_exomol_cross_section(
             # For non-pressure-dependent profiles: process only first pressure (pressure doesn't matter)
             # This gives num_T files (one per temperature)
             P = P_per_temp[temp_idx][0]  # Use first pressure
-            
+
+            if (temp_idx, 0) in resume_skip_set:
+                print(f'Skipping T={T} K: output file already exists (resume).')
+                continue
+
             # Process multiple files in parallel for this temperature
             with ThreadPoolExecutor(max_workers=ncpufiles) as executor:
                 # Submit reading tasks for each file

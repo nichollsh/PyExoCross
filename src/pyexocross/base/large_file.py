@@ -100,8 +100,7 @@ def command_decompress(trans_filename, to_tmpdir=True):
         num = 0
     else:
         command = f'bunzip2 < {trans_filename} > {trans_file}'
-        print('Decompressing file:', trans_filename)
-        print('Command:', command)
+        print('Decompressing', trans_filename.split('/')[-1], '>', trans_file)
         subprocess.run(command, shell=True)
         num = 1
     return(trans_file, num)
