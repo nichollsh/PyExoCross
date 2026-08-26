@@ -4,12 +4,11 @@ Save ExoMol stick spectra.
 This module provides functions for calculating and saving stick spectra
 from ExoMol database files.
 """
-import os
 from functools import partial
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from pyexocross.base.utils import Timer, ensure_dir
 from pyexocross.base.log import (
     log_tqdm, 
@@ -292,7 +291,7 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
         if len(trans_chunks) == 0:
             stick_spectra_df = zero_factory()
         else:
-            with ThreadPoolExecutor(max_workers=ncputrans) as trans_executor:
+            with ProcessPoolExecutor(max_workers=ncputrans) as trans_executor:
                 futures = [trans_executor.submit(process_exomol_stick_spectra_chunk, states_part_df, T_list, Tvib_list, Trot_list, Q_arr, chunk, temp_idx)
                            for chunk in log_tqdm(trans_chunks, desc=desc)]
                 completed = as_completed(futures)

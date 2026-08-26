@@ -132,7 +132,8 @@ def read_trans_chunks(trans_filepath, usecols, names, chunk_sz=None, extracols=N
         A pandas TextFileReader iterator that yields DataFrame chunks.
     """
     if chunk_sz is None:
-        chunk_sz = globals().get('chunk_size', DEFAULT_CHUNK_SIZE)
+        import pyexocross.core as core_module
+        chunk_sz = getattr(core_module, 'chunk_size', DEFAULT_CHUNK_SIZE)
     if isinstance(trans_filepath, TransSource) and trans_filepath.frame is not None:
         frame = trans_filepath.frame
 

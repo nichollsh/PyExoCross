@@ -24,9 +24,9 @@ CrossSections                           1
 
 
 # Cores and chunks #
-NCPUtrans                               4
-NCPUfiles                               10
-ChunkSize                               5000000
+NCPUtrans                               10
+NCPUfiles                               4
+ChunkSize                               50000
 RunMode                                 CPU                       # CPU(default) or GPU
 GPUBackend                              AUTO                      # AUTO, CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (only used when RunMode=GPU)
 GPUBatchLines                           8192                      # GPU line-batch size (only used when RunMode=GPU)

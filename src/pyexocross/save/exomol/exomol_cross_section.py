@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import dask.dataframe as dd
 from functools import partial
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from pyexocross.base.utils import Timer
 from pyexocross.base.log import (
     log_tqdm, 
@@ -22,9 +22,11 @@ from pyexocross.base.large_file import (
     is_large_trans_file,
     LARGE_TRANS_FILE_BYTES,
     read_trans_chunks,
+    process_large_chunks,
     cache_small_file_chunks,
     sourcename,
 )
+from pyexocross.base.constants import MAX_LARGE_FILE_WORKERS
 from pyexocross.database import read_broad, get_part_transfiles
 from pyexocross.database.load_exomol import broad_required_line_columns, extract_broad
 from pyexocross.calculation.calculate_para import cal_v
@@ -522,13 +524,17 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
             use_names,
             extracols=crosscachecolumns(broad_dfs),
         )
-        xsecs = None
-        for trans_df_chunk in log_tqdm(trans_reader, desc=desc):
-            chunk_xsec = process_exomol_cross_section_chunk(states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,
-                                                     broad,ratio,nbroad,broad_dfs,profile_label,trans_df_chunk,temp_idx)
-            xsecs = chunk_xsec if xsecs is None else xsecs + chunk_xsec
-        if xsecs is None:
-            xsecs = np.zeros_like(wn_grid)
+        handler = partial(process_exomol_cross_section_chunk, states_part_df, T_list, Tvib_list, Trot_list, P, Q_arr,
+                          broad, ratio, nbroad, broad_dfs, profile_label, temp_idx=temp_idx)
+        xsecs = process_large_chunks(
+            trans_reader,
+            handler,
+            combine_fn=lambda results: sum(results),
+            zero_factory=lambda: np.zeros_like(wn_grid),
+            desc=desc,
+            max_workers=max(1, min(ncputrans, MAX_LARGE_FILE_WORKERS)),
+            reducer=lambda acc, res: acc + res,
+        )
     else:
         if cached_chunks is not None:
             trans_chunks = cached_chunks
@@ -542,7 +548,7 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
         if len(trans_chunks) == 0:
             xsecs = np.zeros_like(wn_grid)
         else:
-            with ThreadPoolExecutor(max_workers=ncputrans) as trans_executor:
+            with ProcessPoolExecutor(max_workers=ncputrans) as trans_executor:
                 futures = [
                     trans_executor.submit(process_exomol_cross_section_chunk,states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,
                                           broad,ratio,nbroad,broad_dfs,profile_label,chunk,temp_idx) 
