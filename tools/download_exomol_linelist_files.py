@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Import all what we need
 import os
 import re

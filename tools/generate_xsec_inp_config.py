@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+ 
 """
 Generate ExoMol/ExoAtom/HITRAN cross-section input files.
 
@@ -16,8 +17,8 @@ therefore requires ``pyexocross`` to be importable and requires internet
 access.
 
 Usage:
-  python ExoMol_extra_tools/generate_exomolatom_xsec_inp.py --molecule CO
-  python ExoMol_extra_tools/generate_exomolatom_xsec_inp.py --database ExoAtom --atom Na
+  python ExoMol_extra_tools/generate_exomolatom_xsec_inp.py --database ExoMol --molecule CO
+  python ExoMol_extra_tools/generate_exomolatom_xsec_inp.py --database ExoAtom --molecule Na
   python ExoMol_extra_tools/generate_exomolatom_xsec_inp.py --database HITRAN --molecule H2O \\
       --data-dir /scratch/p321409/opacity_lbl/hitran/
 """
