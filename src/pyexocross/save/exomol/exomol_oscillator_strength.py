@@ -12,6 +12,7 @@ from pyexocross.base.utils import Timer, ensure_dir
 from pyexocross.base.log import log_tqdm, print_file_info
 from pyexocross.base.large_file import (
     is_large_trans_file,
+    LARGE_TRANS_FILE_BYTES,
     read_trans_chunks,
     save_large_txt,
     sourcename,
@@ -132,7 +133,7 @@ def process_exomol_oscillator_strength(states_df, trans_filepath):
     trans_reader = read_trans_chunks(trans_filepath, use_cols, use_names)
     desc = 'Processing ' + trans_filename + (' (streaming)' if large_file else '')
     if large_file:
-        print('Large transition file detected (>1 GB). Streaming chunks sequentially to reduce memory usage.')
+        print(f'Large transition file detected (> {LARGE_TRANS_FILE_BYTES / (1000**2):.1f} MB). Streaming chunks sequentially to reduce memory usage.')
         result_frames = []
         for trans_df_chunk in log_tqdm(trans_reader, desc=desc):
             chunk_df = process_exomol_oscillator_strength_chunk(states_df, trans_df_chunk)

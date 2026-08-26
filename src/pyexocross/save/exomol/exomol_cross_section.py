@@ -20,6 +20,7 @@ from pyexocross.base.log import (
 )
 from pyexocross.base.large_file import (
     is_large_trans_file,
+    LARGE_TRANS_FILE_BYTES
     read_trans_chunks,
     cache_small_file_chunks,
     sourcename,
@@ -514,7 +515,7 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
     large_file = cached_chunks is None and is_large_trans_file(trans_filepath)
     desc = 'Processing ' + trans_filename + (' (streaming)' if large_file else '')
     if large_file:
-        print('Large transition file detected (>1 GB). Streaming chunks sequentially to reduce memory usage.')
+        print(f'Large transition file detected (> {LARGE_TRANS_FILE_BYTES / (1000**2):.1f} MB). Streaming to reduce memory usage.')
         trans_reader = read_trans_chunks(
             trans_filepath,
             use_cols,

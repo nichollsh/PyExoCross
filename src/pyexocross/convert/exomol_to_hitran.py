@@ -24,6 +24,7 @@ from ..base import (
 from ..base.large_file import (
     save_large_txt,
     is_large_trans_file,
+    LARGE_TRANS_FILE_BYTES,
     read_trans_chunks,
     process_large_chunks,
     sourcename,
@@ -562,7 +563,7 @@ def process_exomol2hitran_linelist(states_df, trans_filepath):
         return pd.concat(results, ignore_index=True)
     handler = partial(convert_exomol2hitran_linelist, states_df)
     if large_file:
-        print('Large transition file detected (>1 GB). Using bounded parallel streaming to reduce memory usage.')
+        print(f'Large transition file detected (> {LARGE_TRANS_FILE_BYTES / (1000**2):.1f} MB). Streaming to reduce memory usage.')
         try:
             hitran_res_df = process_large_chunks(
                 trans_reader,

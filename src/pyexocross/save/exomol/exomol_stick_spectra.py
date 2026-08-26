@@ -20,6 +20,7 @@ from pyexocross.base.log import (
 from pyexocross.base.large_file import (
     save_large_txt,
     is_large_trans_file,
+    LARGE_TRANS_FILE_BYTES,
     read_trans_chunks,
     process_large_chunks,
     cache_small_file_chunks,
@@ -263,7 +264,7 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
         return pd.concat(valid_results, ignore_index=True)
     handler = partial(process_exomol_stick_spectra_chunk, states_part_df, T_list, Tvib_list, Trot_list, Q_arr, temp_idx=temp_idx)
     if large_file:
-        print('Large transition file detected (>1 GB). Using bounded parallel streaming to reduce memory usage.')
+        print(f'Large transition file detected (> {LARGE_TRANS_FILE_BYTES / (1000**2):.1f} MB). Streaming to reduce memory usage.')
         trans_reader = read_trans_chunks(
             trans_filepath,
             use_cols,
