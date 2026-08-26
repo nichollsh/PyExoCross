@@ -707,7 +707,7 @@ def save_exomol_cross_section(
             # This gives num_T * num_P files (for each T, save num_P files)
             for press_idx, P in enumerate(P_per_temp[temp_idx]):
                 if (temp_idx, press_idx) in resume_skip_set:
-                    print(f'Skipping T={T} K, P={P} bar: output file already exists (resume).')
+                    print(f'Resume-mode skipping T={T:.2f} K, P={P:.2e} bar; output file exists')
                     continue
 
                 # Process multiple files in parallel for this (T, P) combination
@@ -718,7 +718,7 @@ def save_exomol_cross_section(
                     xsec = sum([future.result() for future in futures])
 
                 if len(xsec) == 0 or np.all(xsec == 0):
-                    print(f'Warning: No cross sections found for T={T} K, P={P} bar. Skipping this combination.')
+                    print(f'Warning: No cross sections processed for T={T:.2f} K, P={P:.2e} bar; not writing output')
                     continue
                 
                 any_results = True
