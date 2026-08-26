@@ -38,10 +38,6 @@ if __name__ == '__main__':
     cfg = Config(inp_filepath=inp_path, force_reload=True)
     cfg.resume = args.resume
 
-    # NOTE: the output folder is cleared inside get_results() (core.py), gated on
-    # cfg.resume, rather than here -- this used to be a second, unconditional call
-    # site duplicating that one.
-
     # setup logging
     verbose = parse_verbose_info(inp_path)
     logpath = parse_logging_info(inp_path)

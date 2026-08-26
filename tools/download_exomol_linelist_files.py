@@ -19,13 +19,12 @@ url_dir = '/scratch/p321409/opacity_lbl/exomol/url/'
 url_path = os.path.join(url_dir, 'api__urls.txt')
 file_path = '/scratch/p321409/opacity_lbl/exomol/'
 all_isotopologues = {
+    # EXAMPLE:
     # 'MgH': {
-    #     '24Mg-1H': {'wn_range': None},
-    #     '25Mg-1H': {'wn_range': None},
+    #     '24Mg-1H': {'wn_range': [41000, 41200]},
+    #     '25Mg-1H': {'wn_range': [41000, 41200]},
     # },
-    # 'H2O': {
-    #     '1H2-16O': {'wn_range': [41000, 41200]},
-    # },
+    
     'H2O': {'1H2-16O':  {'wn_range': None}},
     'H2':  {'1H2':      {'wn_range': None}},
     'CO2': {'12C-16O2': {'wn_range': None}},
@@ -51,7 +50,7 @@ all_isotopologues = {
 }
 
 # get one molecule and its isotopologues
-molec = 'O2'
+molec = 'SiH4'
 molecule_isotopologues = dict([(molec, all_isotopologues.get(molec))])
 print('molecule_isotopologues:', molecule_isotopologues)
 
