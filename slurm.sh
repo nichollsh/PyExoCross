@@ -3,11 +3,11 @@
 # --------------------------
 # CHANGE THESE 
 
-#SBATCH --mem=128GB
-#SBATCH --time=00-07:30:00
+#SBATCH --mem=256GB
+#SBATCH --time=02-12:00:00
 #SBATCH --cpus-per-task=40
-#SBATCH --job-name=xsec_H2O
-CONFIG="input/H2O_ExoMol_POKAZATEL_xsec.inp"
+#SBATCH --job-name=xsec_TiO
+CONFIG="input/TiO_ExoMol_Toto_xsec.inp"
 
 # ---------------------------
 # LEAVE THESE 
@@ -24,6 +24,7 @@ CONFIG="input/H2O_ExoMol_POKAZATEL_xsec.inp"
 echo "Home dir:          $HOME"
 source $HOME/.bashrc
 conda activate xsec
+module load netCDF netCDF-Fortran
 
 echo "Python:            $(which python)"
 echo "TMPDIR:            $TMPDIR"
