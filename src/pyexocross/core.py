@@ -325,6 +325,7 @@ def get_results(config, data=None):
                 config.nlte_method,
                 config.read_path,
                 config.data_info,
+                database,
             )
             prepare_timer.end('prepare')
             if states_df is not None:

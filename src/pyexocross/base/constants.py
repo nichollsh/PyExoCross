@@ -11,7 +11,7 @@ import astropy.constants as ac
 
 # File processing constants
 DEFAULT_CHUNK_SIZE = 100_000  # fallback before user input is parsed
-LARGE_TRANS_FILE_BYTES = 2_000_000_000  # 2 GB threshold for large .trans files
+LARGE_TRANS_FILE_BYTES = 10_000_000_000  # 10 GB threshold for large .trans files
 MAX_LARGE_FILE_WORKERS = 2
 MAX_INFLIGHT_MULTIPLIER = 2
 LARGE_WRITE_CHUNK_ROWS = 200_000

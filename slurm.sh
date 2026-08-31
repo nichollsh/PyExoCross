@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # --------------------------
-# CHANGE THESE 
+# CHANGE THESE
 
 #SBATCH --mem=256GB
 #SBATCH --time=02-12:00:00
 #SBATCH --cpus-per-task=40
-#SBATCH --job-name=xsec_TiO
-CONFIG="input/TiO_ExoMol_Toto_xsec.inp"
+#SBATCH --job-name=xsec_OCS
+CONFIG="input/OCS_ExoMol_OYT8_xsec.inp"
 
 # ---------------------------
-# LEAVE THESE 
+# LEAVE THESE
 #SBATCH --export=ALL
 #SBATCH --output=slurm-%x-%j-stdout.log
 #SBATCH --error=slurm-%x-%j-stderr.log

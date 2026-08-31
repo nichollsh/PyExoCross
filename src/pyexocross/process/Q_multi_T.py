@@ -10,7 +10,7 @@ from ..calculation.calculate_partition_func import cal_Q_nlte_2T, cal_Q_nlte_nvi
 from ..database.load_exomol import read_exomol_pf
 from ..database.load_exomolhr import read_exomolhr_pf
 
-def cal_pf_multiT(T_list, Tvib_list, Trot_list, states_df, NLTEMethod, read_path, data_info):
+def cal_pf_multiT(T_list, Tvib_list, Trot_list, states_df, NLTEMethod, read_path, data_info, database):
     """
     Calculate partition functions for multiple temperatures using specified method.
 
@@ -28,6 +28,9 @@ def cal_pf_multiT(T_list, Tvib_list, Trot_list, states_df, NLTEMethod, read_path
     states_df : pd.DataFrame
         States DataFrame with energy and degeneracy columns, and optionally
         Evib, Erot, nvib columns depending on method
+    database : str
+        Database name ('ExoMol', 'ExoAtom', or 'ExoMolHR'), used to pick the
+        matching partition-function reader for NLTEMethod='L'
 
     Returns
     -------
@@ -36,10 +39,14 @@ def cal_pf_multiT(T_list, Tvib_list, Trot_list, states_df, NLTEMethod, read_path
     """
     # LTE
     if NLTEMethod == 'L':
-        try:
+        if database in ('ExoMol', 'ExoAtom'):
             Q_arr = read_exomol_pf(read_path, data_info, T_list)
-        except ValueError:
+        elif database == 'ExoMolHR':
             Q_arr = read_exomolhr_pf(read_path, data_info, T_list)
+        else:
+            raise ValueError(
+                f"cal_pf_multiT does not support database '{database}' for LTE partition functions."
+            )
         if len(Q_arr) != len(T_list):
             raise ValueError(
                 f"Partition function array length ({len(Q_arr)}) does not match "
