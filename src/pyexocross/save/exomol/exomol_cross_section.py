@@ -26,7 +26,7 @@ from pyexocross.base.large_file import (
     cache_small_file_chunks,
     sourcename,
 )
-from pyexocross.base.constants import MAX_LARGE_FILE_WORKERS
+from pyexocross.base.constants import MAX_LARGE_FILE_WORKERS, c2
 from pyexocross.database import read_broad, get_part_transfiles
 from pyexocross.database.load_exomol import broad_required_line_columns, extract_broad
 from pyexocross.calculation.calculate_para import cal_v
@@ -564,6 +564,23 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
                     xsecs += future.result()
     return xsecs
 
+# float64 exp() underflows to exactly 0.0 for arguments below about -745
+UNDERFLOW_EXPONENT = 745
+
+def zero_xsec_reason(states_part_df, T):
+    """Explain why an all-zero cross section array occurred at temperature T.
+
+    Distinguishes the case where the lowest-energy state's Boltzmann population
+    factor exp(-c2*E_min/T) underflows to exact zero in float64 (e.g. a line list
+    that only contains excited electronic states, so nothing is thermally
+    populated at this T) from other causes (filters, wavenumber range, etc.).
+    """
+    E_min = states_part_df['E'].min()
+    if c2 * E_min / T > UNDERFLOW_EXPONENT:
+        return (f'the lowest-energy state in this line list (E={E_min:.1f} cm⁻¹) has '
+                f'negligible thermal population at this temperature')
+    return 'no transitions survived the configured filters/wavenumber range at this temperature'
+
 # Cross sections for ExoMol database
 def save_exomol_cross_section(
     states_part_df,
@@ -723,12 +740,15 @@ def save_exomol_cross_section(
                                                profile_label,trans_filepath,temp_idx,trans_chunks_cache.get(trans_filepath)) for trans_filepath in trans_filepaths]
                     xsec = sum([future.result() for future in futures])
 
-                if len(xsec) == 0 or np.all(xsec == 0):
+                if len(xsec) == 0:
                     print(f'Warning: No cross sections processed for T={T:.2f} K, P={P:.2e} bar; not writing output')
                     continue
-                
+                if np.all(xsec == 0):
+                    reason = zero_xsec_reason(states_part_df, T)
+                    print(f'Note: cross sections are zero for T={T:.2f} K, P={P:.2e} bar - {reason}; writing zero-filled output.')
+
                 any_results = True
-                
+
                 # Save cross sections for this (T, P) combination
                 save_xsec_file_plot(wn_grid, xsec, database, profile_label, T, P, temp_idx, Tvib_list, Trot_list)
                 xsec_file_count += 1
@@ -754,12 +774,15 @@ def save_exomol_cross_section(
                                            profile_label,trans_filepath,temp_idx,trans_chunks_cache.get(trans_filepath)) for trans_filepath in trans_filepaths]
                 xsec = sum([future.result() for future in futures])
                 
-            if len(xsec) == 0 or np.all(xsec == 0):
+            if len(xsec) == 0:
                 print(f'Warning: No cross sections found for T={T} K. Skipping this temperature.')
                 continue
-            
+            if np.all(xsec == 0):
+                reason = zero_xsec_reason(states_part_df, T)
+                print(f'\nCross sections are zero for T={T} K — {reason}; writing zero-filled output.')
+
             any_results = True
-            
+
             # Save cross sections for this temperature
             save_xsec_file_plot(wn_grid, xsec, database, profile_label, T, P, temp_idx, Tvib_list, Trot_list)
             xsec_file_count += 1
