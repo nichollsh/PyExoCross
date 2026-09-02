@@ -265,7 +265,6 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
             ss_fmt_list = ['%15.8E'] + ss_fmt.split()[1:]
         print_file_info('Stick spectra', ss_col_list, ss_fmt_list)
         print(f'\nAll {ss_file_count} stick spectra files have been saved!\n') if saving_enabled() else print(f'\nAll {n_temps} stick spectra results retained in memory!\n')
-        print('* * * * * - - - - - * * * * * - - - * * * * * - - - - - * * * * *\n')
     else:
         print(f'Warning: No transitions found for any temperature. Skipping stick spectra.')
 
@@ -321,4 +320,3 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
     from pyexocross.base.result import end_calculation
     end_calculation(calculation_timer)
     print('Finished calculating stick spectra and cross sections!\n')
-    

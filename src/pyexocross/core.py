@@ -377,7 +377,8 @@ def get_results(config, data=None):
                 tau_map = dict(zip(states_df['id'].values, states_df_tau))
                 states_part_df['tau'] = states_part_df['id'].map(tau_map).astype(float)
                 t.end()
-                print('Finished reading all transitions and calculating lifetimes!\n')
+                print('Finished reading all transitions and calculating lifetimes!')
+                
             # If both stick spectra and cross sections are needed, process together to read files once
             if StickSpectra == 1 and CrossSections == 1:
                 save_exomol_stick_spectra_cross_section(

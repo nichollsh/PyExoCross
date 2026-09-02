@@ -501,4 +501,3 @@ def save_exomol_stick_spectra(
         print(f'All {ss_file_count} stick spectra files have been saved!\n')
     else:
         print(f'All {ntemp} stick spectra results retained in memory!\n')
-    

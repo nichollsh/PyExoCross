@@ -104,8 +104,7 @@ def read_all_states(read_path, data_info, check_uncertainty, states_col, states_
     states_df = states_df.astype(convert_dict)
     t.end('load')
     print_file_info('States', states_col, states_fmt)
-    print('Finished reading states!\n')       
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')                
+    print('Finished reading states!')       
     return states_df
 
 # Read part states file for calculating LTE or non-LTE

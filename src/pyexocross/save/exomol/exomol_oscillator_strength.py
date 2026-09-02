@@ -216,7 +216,7 @@ def save_exomol_oscillator_strength(states_df, trans_sources=None):
     )
     # oscillator_strength_df  = oscillator_strength_df.sort_values('v').reset_index(drop=True)
     tot.end('calculate')
-    print('Finished reading all transitions and calculating oscillator strengths!\n')
+    print('Finished reading all transitions and calculating oscillator strengths!')
 
     print('Preparing oscillator strength output ...')
     ts = Timer()    
@@ -240,4 +240,3 @@ def save_exomol_oscillator_strength(states_df, trans_sources=None):
     if PlotOscillatorStrengthYN == 'Y' and saving_enabled():
         plot_oscillator_strength(oscillator_strength_df)
     print('\nOscillator strength calculation finished!\n')
-    

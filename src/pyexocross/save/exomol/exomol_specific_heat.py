@@ -59,4 +59,3 @@ def save_exomol_specific_heat(states_df, Ntemp, Tmax):
     print_file_info('Specific heats', ['T', 'Specific heats'], ['%8.1f', '%15.4f'])
     print('Specific heats file has been saved:', cp_path, '\n') if cp_path else print('Specific heats retained in memory.\n')
     print('Specific heat calculation finished!\n')
-    

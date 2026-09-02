@@ -62,4 +62,3 @@ def save_hitran_cooling_func(hitran_df, Ntemp, Tmax):
     print_file_info('Cooling functions', ['T', 'Cooling function'], ['%8.1f','%20.8E'])
     print('Cooling functions file has been saved:', cf_path, '\n') if cf_path else print('Cooling functions retained in memory.\n')
     print('Cooling function calculation finished!\n')
-    

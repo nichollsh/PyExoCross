@@ -213,7 +213,7 @@ def save_exomol_lifetime(
         lifetime_result = 1 / sum(np.array([future.result() for future in futures]))
         lifetime = np.array([f'{x:>12.4E}'.replace('INF','Inf') for x in lifetime_result])
     t.end('calculate')
-    print('Finished reading all transitions and calculating lifetimes!\n')
+    print('Finished reading all transitions and calculating lifetimes!')
 
     print('Preparing lifetime output ...')
     ts = Timer()    
@@ -253,4 +253,3 @@ def save_exomol_lifetime(
         print('Lifetimes file has been saved:', lf_path, '\n')
     else:
         print('Lifetimes retained in memory.\n')
-    

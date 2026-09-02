@@ -417,5 +417,5 @@ def conversion_hitran2exomol(hitran_df):
     conversion_trans(hitran2exomol_trans_df, conversion_folder)
     conversion_broad(hitran2exomol_air_df, hitran2exomol_self_df, conversion_folder)
     print('Finished converting data format from HITRAN to ExoMol!\n')
-        return(states_col, states_fmt)
-    
+    return(states_col, states_fmt)
+

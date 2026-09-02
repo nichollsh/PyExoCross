@@ -657,4 +657,3 @@ def conversion_exomol2hitran(states_df, trans_sources=None):
     print('Converted HITRAN par file has been saved:', conversion_path)
     print('Converted HITRAN par file has been saved!\n')  
     print('Finished converting data format from ExoMol to HITRAN!\n')
-    

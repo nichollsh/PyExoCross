@@ -201,7 +201,7 @@ def save_exomol_cooling_func(states_df, Ntemp, Tmax, trans_sources=None):
     from pyexocross.base.result import record, saving_enabled
     record('cooling_function', cooling_func_df, {'temperature': Ts}, {'temperature': 'K'})
     t.end('calculate')
-    print('Finished reading all transitions and calculating cooling functions!\n')
+    print('Finished reading all transitions and calculating cooling functions!')
     
     print('Preparing cooling function output ...')
     ts = Timer()    
@@ -217,4 +217,3 @@ def save_exomol_cooling_func(states_df, Ntemp, Tmax, trans_sources=None):
     print('Cooling functions file has been saved:', cf_path, '\n') if cf_path else print('Cooling functions retained in memory.\n')
     print('Cooling function calculation finished!\n')
     # tqdm.write('Cooling functions has been saved!\n') 
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')  
