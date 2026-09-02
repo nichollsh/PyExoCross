@@ -3,20 +3,18 @@
 # --------------------------
 # CHANGE THESE
 
-#SBATCH --mem=256GB
+#SBATCH --mem=400GB
 #SBATCH --time=02-12:00:00
-#SBATCH --cpus-per-task=40
+#SBATCH --cpus-per-task=50
 #SBATCH --job-name=xsec_OCS
-CONFIG="input/OCS_ExoMol_OYT8_xsec.inp"
-
-# ---------------------------
-# LEAVE THESE
 #SBATCH --export=ALL
 #SBATCH --output=slurm-%x-%j-stdout.log
 #SBATCH --error=slurm-%x-%j-stderr.log
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
+
+CONFIG="input/OCS_ExoMol_OYT8_xsec.inp"
 
 # ---------------------------
 # Dispatch the job
