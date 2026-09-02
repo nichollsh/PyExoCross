@@ -6,7 +6,7 @@
 #SBATCH --mem=200GB
 #SBATCH --time=00-23:45:00
 #SBATCH --cpus-per-task=20
-#SBATCH --job-name=xsec_HCN
+#SBATCH --job-name=xsec_CO2
 #SBATCH --export=ALL
 #SBATCH --output=slurm-%x-%j-stdout.log
 #SBATCH --error=slurm-%x-%j-stderr.log
@@ -16,7 +16,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus-per-node=1
 
-CONFIG="input/HCN_ExoMol_Harris_xsec.inp"
+CONFIG="input/CO2_ExoMol_Dozen_xsec.inp"
 
 # ---------------------------
 # Dispatch the job
