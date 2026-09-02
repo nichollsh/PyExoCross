@@ -263,4 +263,4 @@ def save_hitran_stick_spectra(hitran_linelist_df, QNs_col, T_list, Tvib_list, Tr
         print(f'\nAll {ss_file_count} stick spectra files have been saved!\n')
     else:
         print(f'\nAll {n_temps} stick spectra results retained in memory!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

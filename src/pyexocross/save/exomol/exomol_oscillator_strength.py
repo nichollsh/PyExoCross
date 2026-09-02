@@ -240,4 +240,4 @@ def save_exomol_oscillator_strength(states_df, trans_sources=None):
     if PlotOscillatorStrengthYN == 'Y' and saving_enabled():
         plot_oscillator_strength(oscillator_strength_df)
     print('\nOscillator strength calculation finished!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

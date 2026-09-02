@@ -279,17 +279,17 @@ def gpu_cross_section(
         return None
 
     try:
-        wn_grid_np = np.asarray(wn_grid, dtype=np.float64)
-        v_np = np.asarray(v, dtype=np.float64)
-        coef_np = np.asarray(coef, dtype=np.float64)
+        wn_grid_np = np.array(wn_grid, dtype=np.float64, copy=True)
+        v_np = np.array(v, dtype=np.float64, copy=True)
+        coef_np = np.array(coef, dtype=np.float64, copy=True)
         if len(v_np) == 0:
             return np.zeros_like(wn_grid_np)
 
-        alpha_np = np.asarray(alpha, dtype=np.float64) if alpha is not None else None
-        gamma_np = np.asarray(gamma, dtype=np.float64) if gamma is not None else None
-        sigma_np = np.asarray(sigma, dtype=np.float64) if sigma is not None else None
-        hV_np = np.asarray(hV, dtype=np.float64) if hV is not None else None
-        eta_np = np.asarray(eta, dtype=np.float64) if eta is not None else None
+        alpha_np = np.array(alpha, dtype=np.float64, copy=True) if alpha is not None else None
+        gamma_np = np.array(gamma, dtype=np.float64, copy=True) if gamma is not None else None
+        sigma_np = np.array(sigma, dtype=np.float64, copy=True) if sigma is not None else None
+        hV_np = np.array(hV, dtype=np.float64, copy=True) if hV is not None else None
+        eta_np = np.array(eta, dtype=np.float64, copy=True) if eta is not None else None
 
         # Keep line filtering consistent with CPU behavior: only drop clearly
         # invalid line centers/coefficients. Width parameters are sanitized

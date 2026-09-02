@@ -3,9 +3,9 @@
 # --------------------------
 # CHANGE THESE
 
-#SBATCH --mem=400GB
+#SBATCH --mem=200GB
 #SBATCH --time=02-12:00:00
-#SBATCH --cpus-per-task=50
+#SBATCH --cpus-per-task=40
 #SBATCH --job-name=xsec_OCS
 #SBATCH --export=ALL
 #SBATCH --output=slurm-%x-%j-stdout.log
@@ -13,6 +13,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
+#SBATCH --partition=gpu
+#SBATCH --gpus-per-node=rtx_pro_6000:1
 
 CONFIG="input/OCS_ExoMol_OYT8_xsec.inp"
 

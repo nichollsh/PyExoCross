@@ -579,8 +579,7 @@ def save_hitran_stick_spectra_cross_section(hitran_linelist_df, QNs_col, T_list,
         else:
             print_file_info('Cross sections', ['Wavelength', 'Cross section'], ['%15.8E', '%15.8E'])
         print(f'\nAll {xsec_file_count} cross sections files have been saved!\n') if saving_enabled() else print(f'\nAll {xsec_file_count} cross section results retained in memory!\n')
-        print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
-    
+            
     # Check if we have any results
     if not any_results_ss and not any_results_xsec:
         raise ValueError("Empty result with the input filter values. Please type new filter values in the input file.")
@@ -592,4 +591,4 @@ def save_hitran_stick_spectra_cross_section(hitran_linelist_df, QNs_col, T_list,
     from pyexocross.base.result import end_calculation
     end_calculation(calculation_timer)
     print('Finished calculating stick spectra and cross sections!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

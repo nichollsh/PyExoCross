@@ -197,4 +197,4 @@ def save_exomolhr_stick_spectra(exomolhr_df, QNs_col, T_list, Tvib_list, Trot_li
         print(f'All {ss_file_count} stick spectra files have been saved!\n')
     else:
         print(f'All {n_temps} stick spectra results retained in memory!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

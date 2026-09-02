@@ -32,10 +32,10 @@ Enable GPU mode with:
 - optional `gpu_backend` selection
 
 ```bash
-Device                                  GPU                       # CPU(default) or GPU
-GPUBackend                              AUTO                      # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
-GPUBatchLines                           8192                      # GPU line-batch size (only used when Device=GPU)
-GPUBatchGrid                            256                       # GPU grid-batch size (only used when Device=GPU)
+Device                       GPU      # CPU(default) or GPU
+GPUBackend                   AUTO     # AUTO(default), CUDA, PyTorch-CUDA, CuPy-CUDA, or MPS (used only when Device=GPU)
+GPUBatchLines                8192     # GPU line-batch size - how many spectral lines processed together per kernel launch
+GPUBatchGrid                 256      # GPU grid-batch size  - how many wavenumber grid points are processed together per kernel launch
 ```
 
 ```python

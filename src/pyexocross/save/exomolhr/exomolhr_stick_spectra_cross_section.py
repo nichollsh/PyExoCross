@@ -321,4 +321,4 @@ def save_exomolhr_stick_spectra_cross_section(exomolhr_df, QNs_col, T_list, Tvib
     from pyexocross.base.result import end_calculation
     end_calculation(calculation_timer)
     print('Finished calculating stick spectra and cross sections!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

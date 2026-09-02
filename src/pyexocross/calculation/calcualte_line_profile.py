@@ -453,7 +453,7 @@ def HumlicekVoigt_profile(dv, alpha, gamma):
     t = ne.evaluate('y-1j*x')
     s = ne.evaluate('abs(x)+y')
     u = ne.evaluate('t**2')
-    w = np.zeros_like(s)
+    w = np.zeros_like(s, dtype=complex)
     ybound = ne.evaluate('0.195*abs(x)-0.176')
     # Region 1
     humfilter1 = s >= 15

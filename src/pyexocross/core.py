@@ -22,7 +22,7 @@ timing_active = False
 
 def printdeviceinfo(config):
     """Print the selected CPU/GPU runtime table."""
-    from pyexocross.gpu.base_gpu import configure_runtime
+    from pyexocross.gpu.base_gpu import configure_runtime, warn_if_high_gpu_concurrency
 
     configure_runtime(
         run_mode=getattr(config, 'run_mode', 'CPU'),
@@ -31,6 +31,7 @@ def printdeviceinfo(config):
         gpu_batch_grid=getattr(config, 'gpu_batch_grid', 256),
         verbose=True,
     )
+    warn_if_high_gpu_concurrency(getattr(config, 'ncputrans', None))
 
 
 def printdatabaseinfo(config):

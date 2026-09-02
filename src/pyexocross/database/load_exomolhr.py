@@ -163,8 +163,7 @@ def read_exomolhr_df(read_path, data_info, min_wn, max_wn, unc_filter):
     t.end('load')
     print_file_info('Line list', meta['exomolhr_col'], meta['exomolhr_fmt'])
     print('Finished reading line list!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
-    return exomolhr_df
+        return exomolhr_df
 
 
 def read_exomolhr_pf(read_path, data_info, T_list):

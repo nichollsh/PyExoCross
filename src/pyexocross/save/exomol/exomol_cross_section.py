@@ -27,6 +27,7 @@ from pyexocross.base.large_file import (
     sourcename,
 )
 from pyexocross.base.constants import MAX_LARGE_FILE_WORKERS, c2
+from pyexocross.gpu.base_gpu import using_gpu
 from pyexocross.database import read_broad, get_part_transfiles
 from pyexocross.database.load_exomol import broad_required_line_columns, extract_broad
 from pyexocross.calculation.calculate_para import cal_v
@@ -534,6 +535,7 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
             desc=desc,
             max_workers=max(1, min(ncputrans, MAX_LARGE_FILE_WORKERS)),
             reducer=lambda acc, res: acc + res,
+            executor_class=ThreadPoolExecutor if using_gpu() else ProcessPoolExecutor,
         )
     else:
         if cached_chunks is not None:
@@ -548,10 +550,11 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
         if len(trans_chunks) == 0:
             xsecs = np.zeros_like(wn_grid)
         else:
-            with ProcessPoolExecutor(max_workers=ncputrans) as trans_executor:
+            executor_cls = ThreadPoolExecutor if using_gpu() else ProcessPoolExecutor
+            with executor_cls(max_workers=ncputrans) as trans_executor:
                 futures = [
                     trans_executor.submit(process_exomol_cross_section_chunk,states_part_df,T_list,Tvib_list,Trot_list,P,Q_arr,
-                                          broad,ratio,nbroad,broad_dfs,profile_label,chunk,temp_idx) 
+                                          broad,ratio,nbroad,broad_dfs,profile_label,chunk,temp_idx)
                     for chunk in log_tqdm(trans_chunks, desc=desc)
                 ]
                 xsecs = np.zeros_like(wn_grid)
@@ -808,4 +811,4 @@ def save_exomol_cross_section(
         print(f'All {xsec_file_count} cross sections files have been saved!\n')
     else:
         print(f'All {xsec_file_count} cross section results retained in memory!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

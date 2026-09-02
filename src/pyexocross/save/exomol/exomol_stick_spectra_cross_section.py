@@ -509,8 +509,7 @@ def save_exomol_stick_spectra_cross_section(
             ss_fmt_list = ['%15.8E'] + ss_fmt.split()[1:]
         print_file_info('Stick spectra', ss_col_list, ss_fmt_list)
         print(f'\nAll {ss_file_count} stick spectra files have been saved!\n') if saving_enabled() else print(f'\nAll {ntemp} stick spectra results retained in memory!\n')
-        print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
-    
+            
     # Print cross section info once at the beginning
     # Collect all unique pressures for display
     all_pressures = []
@@ -644,4 +643,4 @@ def save_exomol_stick_spectra_cross_section(
         print(f'All {ss_file_count} stick spectra files have been saved!\n') if saving_enabled() else print(f'All {ntemp} stick spectra results retained in memory!\n')
     if any_results_xsec:
         print(f'All {xsec_file_count} cross sections files have been saved!\n') if saving_enabled() else print(f'All {xsec_file_count} cross section results retained in memory!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

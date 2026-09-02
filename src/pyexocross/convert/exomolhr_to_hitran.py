@@ -254,4 +254,4 @@ def conversion_exomolhr2hitran(exomolhr_df):
     print('Converted HITRAN par file has been saved:', conversion_path)
     print('Converted HITRAN par file has been saved!\n')
     print('Finished converting data format from ExoMolHR to HITRAN!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

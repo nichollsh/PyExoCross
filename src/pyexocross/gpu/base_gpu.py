@@ -23,6 +23,12 @@ from pyexocross.base.log import print_cpu_device_info
 _DEFAULT_GPU_BATCH_LINES = 8192
 _DEFAULT_GPU_BATCH_GRID = 256
 
+# Threads above this NCPUtrans are flagged when using GPU mode
+_NCPUTRANS_GPU_WARN_THRESHOLD = 10
+
+# Bytes per grid-point per spectral line held in VRAM
+_VRAM_BYTES_PER_ELEMENT_ESTIMATE = 32
+
 _RUNTIME = {
     'requested_mode': 'CPU',
     'requested_gpu_backend': 'AUTO',
@@ -460,6 +466,29 @@ def get_gpu_batch_lines() -> int:
 
 def get_gpu_batch_grid() -> int:
     return int(_RUNTIME['gpu_batch_grid'])
+
+
+def warn_if_high_gpu_concurrency(ncputrans: Optional[int]) -> None:
+    """Print a warning if NCPUtrans looks large enough to flood one GPU.
+
+    The standalone cross-section/stick-spectra chunk paths use a thread pool
+    sized by NCPUtrans when GPU mode is active, so that many threads can end
+    up issuing GPU work concurrently against a single device. Estimates a
+    rough peak VRAM figure from GPUBatchGrid x GPUBatchLines x NCPUtrans;
+    this is an order-of-magnitude estimate, not a measurement.
+    """
+    if not using_gpu() or not ncputrans or ncputrans <= _NCPUTRANS_GPU_WARN_THRESHOLD:
+        return
+    grid_batch = get_gpu_batch_grid()
+    line_batch = get_gpu_batch_lines()
+    per_thread_gib = (grid_batch * line_batch * _VRAM_BYTES_PER_ELEMENT_ESTIMATE) / (1024 ** 3)
+    total_gib = per_thread_gib * ncputrans
+    print(
+        f"[GPU warning] NCPUtrans={ncputrans} may run that many threads concurrently "
+        f"against a single GPU (GPUBatchGrid={grid_batch} x GPUBatchLines={line_batch} per thread). \n"
+        f"[GPU warning] Rough estimate: ~{per_thread_gib:.2f} GB/thread, ~{total_gib:.1f} GB peak VRAM if threads "
+        f"overlap. Consider a smaller NCPUtrans for GPU runs."
+    )
 
 
 def to_numpy(arr: Any) -> np.ndarray:

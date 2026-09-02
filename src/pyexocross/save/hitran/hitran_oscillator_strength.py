@@ -63,4 +63,4 @@ def save_hitran_oscillator_strength(hitran_df):
     if PlotOscillatorStrengthYN == 'Y' and saving_enabled():
         plot_oscillator_strength(oscillator_strength_df)  
     print('\nOscillator strength calculation finished!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

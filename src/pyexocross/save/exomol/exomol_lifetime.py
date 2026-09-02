@@ -253,4 +253,4 @@ def save_exomol_lifetime(
         print('Lifetimes file has been saved:', lf_path, '\n')
     else:
         print('Lifetimes retained in memory.\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

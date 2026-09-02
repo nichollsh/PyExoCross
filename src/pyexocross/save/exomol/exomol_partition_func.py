@@ -59,4 +59,4 @@ def save_exomol_partition_func(states_df, Ntemp, Tmax):
     print_file_info('Partition functions', ['T', 'Partition function'], ['%8.1f', '%15.4f'])
     print('Partition functions file has been saved:', pf_path, '\n') if pf_path else print('Partition functions retained in memory.\n')
     print('Partition function calculation finished!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    

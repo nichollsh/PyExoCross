@@ -26,6 +26,7 @@ from pyexocross.base.large_file import (
     sourcename,
 )
 from pyexocross.base.constants import MAX_LARGE_FILE_WORKERS
+from pyexocross.gpu.base_gpu import using_gpu
 from pyexocross.calculation.calculate_para import cal_v
 from pyexocross.calculation.calculate_intensity import (
     cal_abscoefs,
@@ -276,7 +277,8 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
             combine_fn,
             zero_factory,
             desc,
-            max_workers=max(1, min(ncputrans, MAX_LARGE_FILE_WORKERS))
+            max_workers=max(1, min(ncputrans, MAX_LARGE_FILE_WORKERS)),
+            executor_class=ThreadPoolExecutor if using_gpu() else ProcessPoolExecutor,
         )
     else:
         if cached_chunks is not None:
@@ -291,7 +293,8 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
         if len(trans_chunks) == 0:
             stick_spectra_df = zero_factory()
         else:
-            with ProcessPoolExecutor(max_workers=ncputrans) as trans_executor:
+            executor_cls = ThreadPoolExecutor if using_gpu() else ProcessPoolExecutor
+            with executor_cls(max_workers=ncputrans) as trans_executor:
                 futures = [trans_executor.submit(process_exomol_stick_spectra_chunk, states_part_df, T_list, Tvib_list, Trot_list, Q_arr, chunk, temp_idx)
                            for chunk in log_tqdm(trans_chunks, desc=desc)]
                 completed = as_completed(futures)
@@ -498,4 +501,4 @@ def save_exomol_stick_spectra(
         print(f'All {ss_file_count} stick spectra files have been saved!\n')
     else:
         print(f'All {ntemp} stick spectra results retained in memory!\n')
-    print('* * * * * - - - - - * * * * * - - - - - * * * * * - - - - - * * * * *\n')
+    
