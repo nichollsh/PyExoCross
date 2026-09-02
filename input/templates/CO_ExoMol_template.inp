@@ -86,7 +86,7 @@ Pressures                               1.00e-05,1.00e-04,3.20e-04,1.00e-03,3.20
 Npoints/BinSize                         BinSize   0.025
 Broadeners                              Default
 Ratios                                  1.0   
-Profile                                 SciPyVoigt                # or HumlicekVoigt
+Profile                                 HumlicekVoigt                # HumlicekVoigt or SciPyVoigt
 Wavenumber(wn)/wavelength(wl)           wn                        # 'wn' or 'wl'
 PredissocXsec(Y/N)                      N
 CompressXsec(Y/N)                       Y                         # If Y, save as .xsec.bz2 (fast bz2, speed over ratio); otherwise, save as .xsec
