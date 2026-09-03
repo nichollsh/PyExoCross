@@ -4,7 +4,7 @@
 # CHANGE THESE
 
 #SBATCH --mem=200GB
-#SBATCH --time=00-03:45:00
+#SBATCH --time=00-23:45:00
 #SBATCH --cpus-per-task=20
 #SBATCH --job-name=xsec_CO2
 #SBATCH --export=ALL
@@ -17,6 +17,7 @@
 #SBATCH --gpus-per-node=a100:1
 
 CONFIG="input/CO2_ExoMol_Dozen_xsec.inp"
+RESUME="" # or "-r" to resume from checkpoint
 
 # ---------------------------
 # Dispatch the job
@@ -37,9 +38,10 @@ echo "Config file:       $CONFIG"
 
 echo "Started at:        $(date)"
 echo "Expected end:      $(date -d @$SLURM_JOB_END_TIME)    [EPOCH=$SLURM_JOB_END_TIME]"
+echo "Resume:            $RESUME"
 
 echo " "
-srun python run.py -p $CONFIG
+srun python run.py -p $CONFIG $RESUME
 echo " "
 
 echo "Done"

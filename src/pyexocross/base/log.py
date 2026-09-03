@@ -126,19 +126,23 @@ def setup_logging(log_file_path, announce=True):
         If True, print the final log path to the terminal. Default is True.
     """
     global _LOG_FILE_HANDLE
+    
     log_dir = os.path.dirname(log_file_path)
     log_base = os.path.splitext(os.path.basename(log_file_path))[0]
     log_ext = os.path.splitext(log_file_path)[1] or '.log'
+
     now = datetime.datetime.now()
     date_suffix = now.strftime('%Y%m%d')
     dated_name = f'{log_base}__{date_suffix}{log_ext}'
     final_log_path = os.path.join(log_dir, dated_name)
+
     # Always overwrite existing log for this date instead of appending
     _LOG_FILE_HANDLE = open(final_log_path, 'w', buffering=1, encoding='utf-8')
     _LOG_FILE_HANDLE.write(f'Date and time: {now:%Y-%m-%d %H:%M:%S}\n\n')
     _LOG_FILE_HANDLE.flush()
     sys.stdout = TeeStream(_ORIGINAL_STDOUT, _LOG_FILE_HANDLE)
     sys.stderr = TeeStream(_ORIGINAL_STDERR, _LOG_FILE_HANDLE)
+
     atexit.register(_close_log_file)
     if announce:
         _ORIGINAL_STDOUT.write(f'Logging to file: {final_log_path}\n')

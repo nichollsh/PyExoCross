@@ -170,7 +170,7 @@ class Config:
         self.device = self.run_mode
         self.gpu_backend = normalize_gpu_backend(kwargs.get('gpu_backend', getattr(self, 'gpu_backend', 'CUDA')))
         self.gpu_batch_lines = int(kwargs.get('gpu_batch_lines', getattr(self, 'gpu_batch_lines', 8192)))
-        self.gpu_batch_grid = int(kwargs.get('gpu_batch_grid', getattr(self, 'gpu_batch_grid', 256)))
+        self.gpu_batch_grid = int(kwargs.get('gpu_batch_grid', getattr(self, 'gpu_batch_grid', 4096)))
         if self.gpu_batch_lines <= 0 or self.gpu_batch_grid <= 0:
             raise ValueError("gpu_batch_lines and gpu_batch_grid must be positive integers.")
         

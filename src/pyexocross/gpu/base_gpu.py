@@ -21,7 +21,7 @@ import subprocess
 from pyexocross.base.log import print_cpu_device_info
 
 _DEFAULT_GPU_BATCH_LINES = 8192
-_DEFAULT_GPU_BATCH_GRID = 2048
+_DEFAULT_GPU_BATCH_GRID = 4096
 
 # Threads above this NCPUtrans are flagged when using GPU mode
 _NCPUTRANS_GPU_WARN_THRESHOLD = 10
