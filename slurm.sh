@@ -4,7 +4,7 @@
 # CHANGE THESE
 
 #SBATCH --mem=200GB
-#SBATCH --time=00-23:45:00
+#SBATCH --time=00-03:45:00
 #SBATCH --cpus-per-task=20
 #SBATCH --job-name=xsec_CO2
 #SBATCH --export=ALL
@@ -14,7 +14,7 @@
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=gpu
-#SBATCH --gpus-per-node=1
+#SBATCH --gpus-per-node=a100:1
 
 CONFIG="input/CO2_ExoMol_Dozen_xsec.inp"
 
