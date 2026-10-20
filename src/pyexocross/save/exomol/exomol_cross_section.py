@@ -20,7 +20,7 @@ from pyexocross.base.log import (
 )
 from pyexocross.base.large_file import (
     is_large_trans_file,
-    LARGE_TRANS_FILE_BYTES,
+    large_file_bytes,
     read_trans_chunks,
     process_large_chunks,
     cache_small_file_chunks,
@@ -515,10 +515,11 @@ def process_exomol_cross_section(states_part_df,T_list,Tvib_list,Trot_list,P,Q_a
     use_cols, use_names = exomol_cross_section_usecols(
         DopplerHWHMYN, LorentzianHWHMYN, alpha_hwhm_colid, gamma_hwhm_colid
     )
-    large_file = cached_chunks is None and is_large_trans_file(trans_filepath)
+    # Files absent from the chunk cache (over LargeFileSize or over the ChunkCacheMemory budget) are streamed.
+    large_file = cached_chunks is None
     desc = 'Processing ' + trans_filename + (' (streaming)' if large_file else '')
     if large_file:
-        print(f'Large transition file detected (> {LARGE_TRANS_FILE_BYTES / (1000**2):.1f} MB). Streaming to reduce memory usage.')
+        print(f'Transition file is not held in the chunk cache (large-file threshold {large_file_bytes() / (1000**2):.1f} MB; ChunkCacheMemory budget). Streaming to reduce memory usage.')
         trans_reader = read_trans_chunks(
             trans_filepath,
             use_cols,

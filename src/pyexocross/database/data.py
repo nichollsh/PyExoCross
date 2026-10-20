@@ -634,7 +634,7 @@ def loadlinedata(config, cache, cachedir, maxmemory, refresh):
     if cachedir is None:
         cachedir = os.path.join(os.path.dirname(source), '.pyexocross_cache')
     estimate = os.path.getsize(source) * 2
-    memorylimit = maxmemory * 1024**2
+    memorylimit = maxmemory * 1e9
     resolved = cache
     if cache == 'auto':
         resolved = 'none' if maxmemory <= 0 else ('memory' if estimate <= memorylimit else 'parquet')
@@ -1029,7 +1029,7 @@ def loaddata(
     config,
     cache='auto',
     cachedir=None,
-    maxmemory=512,
+    maxmemory=0.5,
     refresh=False,
     alltrans=False,
     preparestates=True,
@@ -1070,7 +1070,7 @@ def loaddata(
         os.path.getsize(path) * (10 if path.endswith('.bz2') else 2)
         for path in selected
     )
-    memorylimit = maxmemory * 1024**2
+    memorylimit = maxmemory * 1e9
     resolved = cache
     if cache == 'auto':
         resolved = 'none' if maxmemory <= 0 else ('memory' if estimate <= memorylimit else 'parquet')

@@ -112,7 +112,9 @@ For HITRAN/HITEMP:
 | `gpu_batch_grid` | `int` | `256` | Max number of grid points per GPU batch (memory-control knob) |
 | `cache` | `str` | `'auto'` | Transition cache: small inputs use memory and large inputs use Parquet; alternatives are `'parquet'` and `'none'` |
 | `cache_dir` | `str` or `None` | `None` | Cache directory; `None` uses a source-adjacent `.pyexocross_cache/` directory |
-| `max_memory` | `int` | `512` | Maximum transition data retained by `cache='auto'`, in MB; internally converted with `1024**2` bytes per MB |
+| `max_memory` | `float` | `0.5` | Maximum transition data retained by `cache='auto'`, in GB (decimal, 1e9 bytes) |
+| `large_file_size` | `float` | `10` | Transition files at or above this size, in GB (decimal), are always streamed in chunks |
+| `chunk_cache_memory` | `float` or `None` | `2` | Total GB (decimal) of parsed transition chunks kept in RAM across **all** files during ExoMol/ExoAtom stick-spectra and cross-section runs; files that do not fit are streamed from disk (re-read per (T, P) point). `0` streams everything; `None` is unlimited. Independent of `cache`/`max_memory` |
 | `refresh` | `bool` | `False` | Rebuild matching Parquet cache files |
 | `all_transitions` | `bool` | `False` | `px.load` only: eagerly load every transition file; whole-list functions expand automatically when needed |
 

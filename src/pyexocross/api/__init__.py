@@ -277,7 +277,7 @@ def load(
     inp_filepath=None,
     cache='auto',
     cache_dir=None,
-    max_memory=512,
+    max_memory=0.5,
     refresh=False,
     all_transitions=False,
     **kwargs,
@@ -294,9 +294,9 @@ def load(
     cache_dir : str, optional
         Parquet cache directory. Defaults to ``.pyexocross_cache`` inside the
         selected input dataset directory.
-    max_memory : int, optional
+    max_memory : float, optional
         Maximum estimated transition data retained by ``auto`` in memory, in
-        MB. Default is 512.
+        GB (decimal). Default is 0.5.
     refresh : bool, optional
         Rebuild matching Parquet cache files.
     all_transitions : bool, optional

@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from .constants import num_cpus
+from .large_file import normalize_chunk_cache_memory, normalize_large_file_size, normalize_max_memory
 from .log import parse_logging_info
 from .qn_metadata import qn_labels_formats_from_states, qn_formats_for_labels
 from .utils import ensure_dir
@@ -343,9 +344,15 @@ def inp_para(inp_filepath):
     else:
         cache_dir = None
     max_memory_rows = inp_df[col0.isin(['MaxMemory'])]
-    max_memory = int(max_memory_rows[1].iloc[0]) if not max_memory_rows.empty else 512
-    if max_memory < 0:
-        raise ValueError('MaxMemory must be zero or a positive number of MB.')
+    max_memory = normalize_max_memory(max_memory_rows[1].iloc[0] if not max_memory_rows.empty else None)
+    large_file_rows = inp_df[col0.isin(['LargeFileSize'])]
+    large_file_size = normalize_large_file_size(
+        large_file_rows[1].iloc[0] if not large_file_rows.empty else None
+    )
+    chunk_cache_rows = inp_df[col0.isin(['ChunkCacheMemory'])]
+    chunk_cache_memory = normalize_chunk_cache_memory(
+        chunk_cache_rows[1].iloc[0] if not chunk_cache_rows.empty else 'AUTO'
+    )
     refresh_cache_rows = inp_df[col0.isin(['RefreshCache(Y/N)'])]
     refresh_cache = (
         str(refresh_cache_rows[1].iloc[0]).strip().upper().startswith('Y')
@@ -1030,4 +1037,5 @@ def inp_para(inp_filepath):
             PlotOscillatorStrengthYN, PlotOscillatorStrengthMethod, PlotOscillatorStrengthWnWl, PlotOscillatorStrengthUnit, limitYaxisOS,
             PlotStickSpectraYN, PlotStickSpectraMethod, PlotStickSpectraWnWl, PlotStickSpectraUnit, limitYaxisStickSpectra, 
             Tvib_list, Trot_list, vib_label, rot_label, PlotCrossSectionYN, PlotCrossSectionMethod, PlotCrossSectionWnWl, PlotCrossSectionUnit, limitYaxisXsec,
-            cache, cache_dir, max_memory, refresh_cache, CompressXsecYN)
+            cache, cache_dir, max_memory, refresh_cache, CompressXsecYN,
+            large_file_size, chunk_cache_memory)

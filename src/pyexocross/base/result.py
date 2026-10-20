@@ -138,7 +138,7 @@ class Result:
 COMMON_PARAMETERS = {
     'database', 'molecule', 'isotopologue', 'dataset', 'atom',
     'read_path', 'save_path', 'logs_path', 'output', 'cache', 'cache_dir',
-    'max_memory', 'refresh_cache',
+    'max_memory', 'refresh_cache', 'large_file_size', 'chunk_cache_memory',
 }
 COMPUTE_PARAMETERS = {
     'ncputrans', 'ncpufiles', 'chunk_size', 'run_mode', 'device',

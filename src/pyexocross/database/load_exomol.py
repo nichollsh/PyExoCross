@@ -13,7 +13,7 @@ import pandas as pd
 import dask.dataframe as dd
 from ..base.utils import Timer
 from ..base.log import print_file_info
-from ..base.constants import LARGE_TRANS_FILE_BYTES
+from ..base.large_file import large_file_bytes
 from ..base.large_file import command_decompress
 from ..base.qn_metadata import normalized_states_columns
 
@@ -290,7 +290,7 @@ def get_transfiles(read_path, data_info, prepare=True):
             original_path = trans_filepaths_all[i]
             file_size_bytes = os.path.getsize(original_path)
             trans_filepath = original_path
-            if prepare and original_path.endswith('.bz2') and file_size_bytes >= LARGE_TRANS_FILE_BYTES:
+            if prepare and original_path.endswith('.bz2') and file_size_bytes >= large_file_bytes():
                 (trans_filepath, num_dec) = command_decompress(original_path)
                 all_decompress_num += 1
                 decompress_num += num_dec
@@ -348,7 +348,7 @@ def get_part_transfiles(read_path, data_info, min_wn, max_wn, prepare=True):
             if split_version[0] == data_info[-1]:
                 trans_filepath = trans_filepaths_all[i]
                 file_size_bytes = os.path.getsize(trans_filepath)
-                if prepare and trans_filepath.endswith('.bz2') and file_size_bytes >= LARGE_TRANS_FILE_BYTES:
+                if prepare and trans_filepath.endswith('.bz2') and file_size_bytes >= large_file_bytes():
                     (trans_filepath, num_dec) = command_decompress(trans_filepath)
                     all_decompress_num += 1
                     decompress_num += num_dec
@@ -361,7 +361,7 @@ def get_part_transfiles(read_path, data_info, min_wn, max_wn, prepare=True):
                     (lower <= int(max_wn) < upper)):
                     file_size_bytes = os.path.getsize(trans_filepaths_all[i])
                     trans_filepath = trans_filepaths_all[i]
-                    if prepare and trans_filepath.endswith('.bz2') and file_size_bytes >= LARGE_TRANS_FILE_BYTES:
+                    if prepare and trans_filepath.endswith('.bz2') and file_size_bytes >= large_file_bytes():
                         (trans_filepath, num_dec) = command_decompress(trans_filepath)
                         all_decompress_num += 1
                         decompress_num += num_dec
@@ -369,7 +369,7 @@ def get_part_transfiles(read_path, data_info, min_wn, max_wn, prepare=True):
             elif is_labeled_trans_suffix(split_version[0]):
                 trans_filepath = trans_filepaths_all[i]
                 file_size_bytes = os.path.getsize(trans_filepath)
-                if prepare and trans_filepath.endswith('.bz2') and file_size_bytes >= LARGE_TRANS_FILE_BYTES:
+                if prepare and trans_filepath.endswith('.bz2') and file_size_bytes >= large_file_bytes():
                     (trans_filepath, num_dec) = command_decompress(trans_filepath)
                     all_decompress_num += 1
                     decompress_num += num_dec

@@ -46,11 +46,12 @@ all_isotopologues = {
     'SiO': {'28Si-16O': {'wn_range': None}},
     'FeO': {'56Fe-16O': {'wn_range': None}},
     'TiO': {'48Ti-16O': {'wn_range': None}},
+    'VO':  {'51V-16O': {'wn_range': None}},
     'MgO': {'24Mg-16O': {'wn_range': None}},
 }
 
 # get one molecule and its isotopologues
-molec = 'SiH4'
+molec = 'VO'
 molecule_isotopologues = dict([(molec, all_isotopologues.get(molec))])
 print('molecule_isotopologues:', molecule_isotopologues)
 

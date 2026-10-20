@@ -62,6 +62,10 @@ from .input import parse_args, parse_TP_values, inp_para
 from .config_manager import ConfigManager, get_config
 from .large_file import (
     is_large_trans_file,
+    large_file_bytes,
+    chunk_cache_bytes,
+    set_memory_limits,
+    cache_small_file_chunks,
     command_decompress,
     read_trans_chunks,
     process_large_chunks,
@@ -73,6 +77,10 @@ __all__ = [
     # Constants
     'DEFAULT_CHUNK_SIZE',
     'LARGE_TRANS_FILE_BYTES',
+    'large_file_bytes',
+    'chunk_cache_bytes',
+    'set_memory_limits',
+    'cache_small_file_chunks',
     'MAX_LARGE_FILE_WORKERS',
     'MAX_INFLIGHT_MULTIPLIER',
     'LARGE_WRITE_CHUNK_ROWS',
