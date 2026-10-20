@@ -13,8 +13,8 @@ import astropy.constants as ac
 DEFAULT_CHUNK_SIZE = 100_000  # fallback before user input is parsed
 LARGE_TRANS_FILE_BYTES = 10_000_000_000  # 10 GB threshold for large .trans files
 DEFAULT_LARGE_FILE_GB = LARGE_TRANS_FILE_BYTES / 1e9  # default LargeFileSize (GB, decimal)
-DEFAULT_CHUNK_CACHE_GB = 2.0  # default ChunkCacheMemory (GB, decimal) for parsed transition chunks
-DEFAULT_MAX_MEMORY_GB = 0.5  # default MaxMemory (GB, decimal) for Cache=Auto
+DEFAULT_CHUNK_CACHE_GB = 500.0  # default ChunkCacheMemory (GB, decimal) for parsed transition chunks
+DEFAULT_MAX_MEMORY_GB = 1.0  # default MaxMemory (GB, decimal) for Cache=Auto
 MAX_LARGE_FILE_WORKERS = 2
 MAX_INFLIGHT_MULTIPLIER = 2
 LARGE_WRITE_CHUNK_ROWS = 200_000
