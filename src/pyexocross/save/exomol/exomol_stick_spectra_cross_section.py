@@ -16,6 +16,8 @@ from pyexocross.base.log import (
     print_T_Tvib_Trot_P_path_info,
 )
 from pyexocross.base.large_file import (
+    chunk_cache_bytes,
+    collect_chunks_within_budget,
     is_large_trans_file,
     read_trans_chunks,
     save_large_txt,
@@ -301,12 +303,14 @@ def save_exomol_stick_spectra_cross_section(
     trans_chunks_cache_ss = {}  # Cache for stick spectra chunks
     trans_chunks_cache_xsec = {}  # Cache for cross section chunks
     large_files_list = []
+    chunk_budget = chunk_cache_bytes()    # None means unlimited
+    chunk_used = 0
     
-    # Determine which files are large and cache small file chunks
+    # Determine which files are large and cache small file chunks. Files over the large-file
+    # threshold, or that would exceed the ChunkCacheMemory budget, are streamed instead.
     for trans_filepath in trans_filepaths:
         trans_filename = sourcename(trans_filepath)
         large_file = is_large_trans_file(trans_filepath)
-        large_files_list.append((trans_filepath, large_file))
         
         if not large_file:
             # Cache chunks for small files
@@ -321,26 +325,44 @@ def save_exomol_stick_spectra_cross_section(
                 use_names_ss,
                 extracols=projectedss,
             )
-            trans_chunks_cache_ss[trans_filepath] = list(trans_reader_ss)
-            num_chunks_ss = len(trans_chunks_cache_ss[trans_filepath])
-            
-            # Cache cross section chunks if different from stick spectra
-            if use_cols_ss != use_cols_xsec:
-                trans_reader_xsec = read_trans_chunks(
-                    trans_filepath,
-                    use_cols_xsec,
-                    use_names_xsec,
-                    extracols=crosscolumns,
-                )
-                trans_chunks_cache_xsec[trans_filepath] = list(trans_reader_xsec)
+            remaining = None if chunk_budget is None else chunk_budget - chunk_used
+            chunks_ss, nbytes = (
+                (None, 0) if remaining is not None and remaining <= 0
+                else collect_chunks_within_budget(trans_reader_ss, remaining)
+            )
+            chunks_xsec = None
+            if chunks_ss is not None:
+                # Cache cross section chunks if different from stick spectra
+                if use_cols_ss != use_cols_xsec:
+                    trans_reader_xsec = read_trans_chunks(
+                        trans_filepath,
+                        use_cols_xsec,
+                        use_names_xsec,
+                        extracols=crosscolumns,
+                    )
+                    chunks_xsec, nbytes_xsec = collect_chunks_within_budget(
+                        trans_reader_xsec,
+                        None if remaining is None else remaining - nbytes,
+                    )
+                    nbytes += nbytes_xsec
+                else:
+                    chunks_xsec = chunks_ss
+            if chunks_xsec is None:
+                # Does not fit in the budget: drop partial chunks and stream this file instead.
+                large_file = True
+                print(f'Streaming {trans_filename}: it does not fit in the ChunkCacheMemory budget.')
             else:
-                trans_chunks_cache_xsec[trans_filepath] = trans_chunks_cache_ss[trans_filepath]
-            num_chunks_xsec = len(trans_chunks_cache_xsec[trans_filepath])
-            
-            if num_chunks_ss == 0:
-                print(f'Warning: No chunks found when caching small file {trans_filename}')
-            else:
-                print(f'Cached {num_chunks_ss} chunk(s) for stick spectra and {num_chunks_xsec} chunk(s) for cross sections from {trans_filename}')
+                trans_chunks_cache_ss[trans_filepath] = chunks_ss
+                trans_chunks_cache_xsec[trans_filepath] = chunks_xsec
+                chunk_used += nbytes
+                num_chunks_ss = len(chunks_ss)
+                num_chunks_xsec = len(chunks_xsec)
+                if num_chunks_ss == 0:
+                    print(f'Warning: No chunks found when caching small file {trans_filename}')
+                else:
+                    print(f'Cached {num_chunks_ss} chunk(s) for stick spectra and {num_chunks_xsec} chunk(s) for cross sections from {trans_filename}')
+        
+        large_files_list.append((trans_filepath, large_file))
     
     # Process all transition files ONCE
     print(f'Processing {len(large_files_list)} transition file(s) for {ntemp} temperature(s)...')

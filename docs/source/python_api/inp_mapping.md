@@ -107,13 +107,15 @@ The `resume` flag is a Python-API kwarg (`resume=True`, default `False`) and CLI
 
 ## Parquet Transition Cache
 
-All four of these keywords are optional.
+All of these keywords are optional.
 
 | `.inp` Keyword | Python Kwarg | `.inp` Format | Python Type |
 |---|---|---|---|
 | `Cache` | `cache` | `AUTO` / `Parquet` / `None` | `'auto'` / `'parquet'` / `'none'` (str, default `'auto'`) |
 | `CacheDir` | `cache_dir` | `AUTO` or an explicit path | `None` or `str` (default `None`, i.e. a source-adjacent `.pyexocross_cache/` directory) |
-| `MaxMemory` | `max_memory` | `512` | `512` (int, MB, default `512`; only used when `Cache=Auto`) |
+| `MaxMemory` | `max_memory` | `0.5` | `0.5` (float, GB (decimal, 1 GB = 1e9 bytes), default `0.5`; only used when `Cache=Auto`) |
+| `LargeFileSize` | `large_file_size` | `10` | `10.0` (float, GB (decimal, 1 GB = 1e9 bytes), default `10`; transition files at or above this size are always streamed in chunks) |
+| `ChunkCacheMemory` | `chunk_cache_memory` | `float` or `UNLIMITED` | `500.0` (float, GB (decimal), default `500`; `0` streams every file, `None`/`'UNLIMITED'` restores the old unbounded behaviour) |
 | `RefreshCache(Y/N)` | `refresh_cache` (or `refresh`) | `Y` or `N` | `True` / `False` (bool, default `False`) |
 
 Note: because pandas' `.inp` parser treats a literal `None` cell as a missing value, write `NONE` (not `None`) for `Cache`. Write `AUTO` when requesting the default behaviours.

@@ -10,6 +10,7 @@ import shutil
 import numpy as np
 
 from pyexocross.base.input import inp_para, parse_TP_values
+from pyexocross.base.large_file import normalize_chunk_cache_memory, normalize_large_file_size, normalize_max_memory
 from pyexocross.base.log import normalize_verbose, parse_verbose_info
 from pyexocross.base.utils import ensure_dir
 from pyexocross.base.constants import *
@@ -123,12 +124,16 @@ class Config:
         if self.cache not in ('auto', 'parquet', 'none'):
             raise ValueError("cache must be 'auto', 'parquet', or 'none'.")
         self.cache_dir = kwargs.get('cache_dir', getattr(self, 'cache_dir', None))
-        self.max_memory = int(kwargs.get('max_memory', getattr(self, 'max_memory', 512)))
+        self.max_memory = normalize_max_memory(kwargs.get('max_memory', getattr(self, 'max_memory', None)))
         self.refresh_cache = bool(kwargs.get('refresh', kwargs.get(
             'refresh_cache', getattr(self, 'refresh_cache', False)
         )))
-        if self.max_memory < 0:
-            raise ValueError('max_memory must be zero or a positive number of MB.')
+        self.large_file_size = normalize_large_file_size(
+            kwargs.get('large_file_size', getattr(self, 'large_file_size', None))
+        )
+        self.chunk_cache_memory = normalize_chunk_cache_memory(
+            kwargs.get('chunk_cache_memory', getattr(self, 'chunk_cache_memory', 'AUTO'))
+        )
         
         # Ensure directories exist
         ensure_dir(self.save_path)
@@ -620,10 +625,13 @@ class Config:
         if len(params) == 98:
             # Older cached tuples predate the Cache/CacheDir/MaxMemory/RefreshCache
             # keywords; default to the same values previously hardcoded below.
-            params = tuple(params) + ('auto', None, 512, False)
+            params = tuple(params) + ('auto', None, normalize_max_memory(None), False)
         if len(params) == 102:
             # Older cached tuples predate the CompressXsec(Y/N) keyword.
             params = tuple(params) + ('N',)
+        if len(params) == 103:
+            # Older cached tuples predate the LargeFileSize/ChunkCacheMemory keywords.
+            params = tuple(params) + (normalize_large_file_size(None), normalize_chunk_cache_memory('AUTO'))
 
         # Unpack all parameters (matching inp_para return structure)
         (self.database, self.data_info, self.read_path, self.save_path, self.logs_path,
@@ -657,12 +665,10 @@ class Config:
          self.plot_cross_section_yn, self.plot_cross_section_method,
          self.plot_cross_section_wn_wl, self.plot_cross_section_unit, self.limit_yaxis_xsec,
          self.cache, self.cache_dir, self.max_memory, self.refresh_cache,
-         self.compress_xsec_yn) = params
+         self.compress_xsec_yn, self.large_file_size, self.chunk_cache_memory) = params
         self.device = self.run_mode
         if self.cache not in ('auto', 'parquet', 'none'):
             raise ValueError("cache must be 'auto', 'parquet', or 'none'.")
-        if self.max_memory < 0:
-            raise ValueError('max_memory must be zero or a positive number of MB.')
 
     def to_globals(self):
         """

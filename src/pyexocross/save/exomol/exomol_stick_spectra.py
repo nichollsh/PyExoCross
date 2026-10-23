@@ -19,7 +19,7 @@ from pyexocross.base.log import (
 from pyexocross.base.large_file import (
     save_large_txt,
     is_large_trans_file,
-    LARGE_TRANS_FILE_BYTES,
+    large_file_bytes,
     read_trans_chunks,
     process_large_chunks,
     cache_small_file_chunks,
@@ -251,7 +251,8 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
     print('\nProcessing transitions file:', trans_filename)
     use_cols = [0,1,2]
     use_names = ['uid','lid','A']
-    large_file = cached_chunks is None and is_large_trans_file(trans_filepath)
+    # Files absent from the chunk cache (over LargeFileSize or over the ChunkCacheMemory budget) are streamed.
+    large_file = cached_chunks is None
     desc = 'Processing ' + trans_filename + (' (limited streaming)' if large_file else '')
     zero_factory = lambda: pd.DataFrame(columns=['v','S',"J'","E'",'J"','E"'])
     def combine_fn(results):
@@ -264,7 +265,7 @@ def process_exomol_stick_spectra(states_part_df,T_list,Tvib_list,Trot_list,Q_arr
         return pd.concat(valid_results, ignore_index=True)
     handler = partial(process_exomol_stick_spectra_chunk, states_part_df, T_list, Tvib_list, Trot_list, Q_arr, temp_idx=temp_idx)
     if large_file:
-        print(f'Large transition file detected (> {LARGE_TRANS_FILE_BYTES / (1000**2):.1f} MB). Streaming to reduce memory usage.')
+        print(f'Transition file is not held in the chunk cache (large-file threshold {large_file_bytes() / (1000**2):.1f} MB; ChunkCacheMemory budget). Streaming to reduce memory usage.')
         trans_reader = read_trans_chunks(
             trans_filepath,
             use_cols,

@@ -114,6 +114,10 @@ def get_results(config, data=None):
     from pyexocross.save.hitran.hitran_cross_section import save_hitran_cross_section
     from pyexocross.save.hitran.hitran_stick_spectra_cross_section import save_hitran_stick_spectra_cross_section
     
+    # Apply this run's large-file threshold and chunk-cache memory budget.
+    from pyexocross.base.large_file import set_memory_limits
+    set_memory_limits(config.large_file_size, config.chunk_cache_memory)
+
     # Update bin-size–dependent constants used by line profile and cross-section routines.
     from pyexocross.base import constants as _const_mod
     import pyexocross.calculation.calcualte_line_profile as _calc_mod

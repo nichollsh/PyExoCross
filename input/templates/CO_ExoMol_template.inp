@@ -36,7 +36,9 @@ GPUBatchGrid                            2048                       # GPU grid-ba
 # Parquet transition cache #
 Cache                                   NONE                      # None(default, disabled), Auto (memory for small inputs, Parquet for large), or Parquet (always cache to disk)
 CacheDir                                AUTO                      # AUTO(default) uses a source-adjacent .pyexocross_cache/ directory; or set an explicit path (only used when Cache!=None)
-MaxMemory                               512                       # Max MB of transition data kept in memory before spilling to Parquet (only used when Cache=Auto)
+MaxMemory                               0.5                       # Max GB of transition data kept in memory before spilling to Parquet (only used when Cache=Auto)
+LargeFileSize                           10                        # Transition files at or above this size (GB, decimal) are always streamed in chunks instead of held in memory (default 10)
+ChunkCacheMemory                        400                         # Total GB of parsed transition chunks kept in RAM across all files; files that do not fit are streamed. 0 = stream everything, UNLIMITED = no limit (default 2)
 RefreshCache(Y/N)                       N                         # If Y, rebuild matching Parquet cache files instead of reusing them (only used when Cache!=None)
 
 

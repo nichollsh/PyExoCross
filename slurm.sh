@@ -3,10 +3,10 @@
 # --------------------------
 # CHANGE THESE
 
-#SBATCH --mem=200GB
-#SBATCH --time=00-23:45:00
-#SBATCH --cpus-per-task=20
-#SBATCH --job-name=xsec_CO2
+#SBATCH --mem=450GB
+#SBATCH --time=02-22:58:00
+#SBATCH --cpus-per-task=22
+#SBATCH --job-name=xsec_CH4
 #SBATCH --export=ALL
 #SBATCH --output=slurm-%x-%j-stdout.log
 #SBATCH --error=slurm-%x-%j-stderr.log
@@ -16,8 +16,9 @@
 #SBATCH --partition=gpu
 #SBATCH --gpus-per-node=a100:1
 
-CONFIG="input/CO2_ExoMol_Dozen_xsec.inp"
-RESUME="" # or "-r" to resume from checkpoint
+# CONFIG="input/NH3_ExoMol_CoYuTe_xsec.inp"
+CONFIG="input/CH4_ExoMol_MM_xsec.inp"
+RESUME="-r" # or "-r" to resume from checkpoint
 
 # ---------------------------
 # Dispatch the job

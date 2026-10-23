@@ -69,7 +69,7 @@ px.cross_sections(..., device='GPU', gpu_backend='MPS')
 ## `px.load`
 
 ```python
-data = px.load(..., cache='auto', cache_dir=None, max_memory=512,
+data = px.load(..., cache='auto', cache_dir=None, max_memory=0.5,
                all_transitions=False)
 ```
 
@@ -104,7 +104,7 @@ format. Use the result with `data=` in `px.conversion`,
 | `unc_filter` | `float` or `None` | No | Maximum uncertainty retained during preprocessing; default `None` |
 | `cache` | `str` | No | `auto`, `parquet`, or `none`; default `auto` |
 | `cache_dir` | `str` or `None` | No | Persistent cache directory; default is source-adjacent `.pyexocross_cache/` |
-| `max_memory` | `int` | No | Auto-mode memory threshold in MB; default `512` |
+| `max_memory` | `float` | No | Auto-mode memory threshold in GB; default `0.5` |
 | `refresh` | `bool` | No | Rebuild matching persistent caches; default `False` |
 | `all_transitions` | `bool` | No | Eagerly load all transition files; default `False` |
 | `device` or `run_mode` | `str` | No | `CPU` or `GPU`; default `CPU` |
@@ -154,7 +154,7 @@ data = px.load(
     min_range=0,
     max_range=10000,
     cache='auto',  
-    max_memory=512,
+    max_memory=0.5,
     device='CPU',
 )
 
@@ -194,8 +194,8 @@ With `cache_dir=None`, PyExoCross stores persistent files in
 `<read_path>/<data_info>/.pyexocross_cache/`. Initial conversion takes extra
 time; subsequent runs reuse the cache if the source path, size, and
 modification time are unchanged. Set `refresh=True` to rebuild it.
-`max_memory` is specified in MB. The default `max_memory=512` is converted
-internally to `512 * 1024**2` bytes and only limits transition data retained by
+`max_memory` is specified in GB (decimal). The default `max_memory=0.5` is
+converted internally to `0.5 * 1e9` bytes and only limits transition data retained by
 `cache='auto'`; it is not a limit on total process memory.
 
 The same Parquet files work in CPU and GPU modes. Current Parquet reading,
@@ -416,7 +416,7 @@ Convert between ExoMol/ExoMolHR/ExoAtom and HITRAN line-list formats.
 | `chunk_size` | `int` | `100000` | Chunk size for transitions |
 | `cache` | `str` | `'auto'` | `'auto'`, `'parquet'`, or `'none'` |
 | `cache_dir` | `str` or `None` | `None` | Persistent cache directory |
-| `max_memory` | `int` | `512` | Auto-mode memory threshold in MB |
+| `max_memory` | `float` | `0.5` | Auto-mode memory threshold in GB |
 
 **Legacy Aliases**
 
